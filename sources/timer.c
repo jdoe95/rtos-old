@@ -40,7 +40,10 @@ timer_createPriority( osCounter_t priority )
 
 	/* check if allocated */
 	if( block == NULL )
+	{
+		OS_ASSERT(0);
 		return NULL;
+	}
 
 	/* create a daemon thread */
 	daemon = osThreadCreate( priority, (osCode_t) timerTask, TIMER_THREAD_STACK_SIZE, block );
@@ -50,6 +53,7 @@ timer_createPriority( osCounter_t priority )
 	{
 		/* failed to create thread */
 		memory_returnToHeap( block, & kernelMemoryList );
+		OS_ASSERT(0);
 		return NULL;
 	}
 
@@ -104,6 +108,7 @@ osTimerCreate( osTimerMode_t mode, osCounter_t priority, osCounter_t period, osC
 	/* check allocation */
 	if( timer == NULL )
 	{
+		OS_ASSERT(0);
 		return 0;
 	}
 
@@ -126,6 +131,7 @@ osTimerCreate( osTimerMode_t mode, osCounter_t priority, osCounter_t period, osC
 	{
 		/* failed to create priority, free the timer control block */
 		memory_returnToHeap( timer, & kernelMemoryList );
+		OS_ASSERT(0);
 		return 0;
 	}
 

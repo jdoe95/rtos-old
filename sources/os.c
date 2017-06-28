@@ -26,33 +26,35 @@ osInit( void )
 	 * section. This can also prevent osThreadCreate from
 	 * evoking the context switcher before osStart() */
 	osThreadEnterCritical();
+	{
 
-	/* heap */
-	memory_heapInit();
-	port_heapInit();
+		/* heap */
+		memory_heapInit();
+		port_heapInit();
 
-	memory_listInit( & kernelMemoryList );
-	prioritizedList_init( & threads_timed );
-	prioritizedList_init( & threads_ready );
-	notPrioritizedList_init( & timerPriorityList );
+		memory_listInit( & kernelMemoryList );
+		prioritizedList_init( & threads_timed );
+		prioritizedList_init( & threads_ready );
+		notPrioritizedList_init( & timerPriorityList );
 
-	/* create the idle thread */
-	thread_init( &idleThread );
-	idleThread.stackMemory = idleThreadStack;
-	idleThread.PSP = port_makeFakeContext( idleThreadStack, IDLE_THREAD_STACK_SIZE, port_idle, 0 );
-	idleThread.priority = OS_PRIO_LOWEST;
-	idleThread.state = OSTHREAD_READY;
+		/* create the idle thread */
+		thread_init( &idleThread );
+		idleThread.stackMemory = idleThreadStack;
+		idleThread.PSP = port_makeFakeContext( idleThreadStack, IDLE_THREAD_STACK_SIZE, port_idle, 0 );
+		idleThread.priority = OS_PRIO_LOWEST;
+		idleThread.state = OSTHREAD_READY;
 
-	/* add the idle thread to the ready list */
-	prioritizedList_insert( (PrioritizedListItem_t*) ( &idleThread.schedulerListItem ), &threads_ready );
+		/* add the idle thread to the ready list */
+		prioritizedList_insert( (PrioritizedListItem_t*) ( &idleThread.schedulerListItem ), &threads_ready );
 
-	currentThread = &idleThread;
-	nextThread = &idleThread;
+		currentThread = &idleThread;
+		nextThread = &idleThread;
 
-	/* thread termination signal */
-	terminationSignal = osSignalCreate(sizeof(osHandle_t));
-	OS_ASSERT( terminationSignal );
+		/* thread termination signal */
+		terminationSignal = osSignalCreate(sizeof(osHandle_t));
+		OS_ASSERT( terminationSignal );
 
+	}
 	osThreadExitCritical();
 }
 

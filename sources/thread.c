@@ -195,6 +195,7 @@ osThreadCreate( osCounter_t priority, osCode_t code, osCounter_t stackSize, cons
 	thread = (Thread_t*) memory_allocateFromHeap( sizeof(Thread_t), &kernelMemoryList );
 	if( thread == NULL )
 	{
+		OS_ASSERT(0);
 		return 0;
 	}
 
@@ -203,6 +204,7 @@ osThreadCreate( osCounter_t priority, osCode_t code, osCounter_t stackSize, cons
 	if( stackMemory == NULL )
 	{
 		memory_returnToHeap( thread, & kernelMemoryList );
+		OS_ASSERT(0);
 		return 0;
 	}
 
@@ -381,7 +383,15 @@ osThreadGetPriority( osHandle_t thread )
 	if( thread == 0 )
 		p = currentThread;
 
-	return p->priority;
+	osCounter_t ret;
+
+	osThreadEnterCritical();
+	{
+		ret = p->priority;
+	}
+	osThreadExitCritical();
+
+	return ret;
 }
 
 void

@@ -252,12 +252,17 @@ osQueueCreate( osCounter_t size )
 {
 	Queue_t* queue = memory_allocateFromHeap( sizeof(Queue_t), &kernelMemoryList );
 	if( queue == NULL )
+	{
+		OS_ASSERT(0);
 		return 0;
+	}
+
 
 	osByte_t* memory = memory_allocateFromHeap( size, &kernelMemoryList );
 	if( memory == NULL )
 	{
 		memory_returnToHeap( queue, & kernelMemoryList );
+		OS_ASSERT(0);
 		return 0;
 	}
 
@@ -315,7 +320,15 @@ osCounter_t
 osQueueGetSize( osHandle_t h )
 {
 	Queue_t* queue = (Queue_t*) h;
-	return queue->size;
+	osCounter_t ret;
+
+	osThreadEnterCritical();
+	{
+		ret = queue->size;
+	}
+	osThreadExitCritical();
+
+	return ret;
 }
 
 osCounter_t

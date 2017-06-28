@@ -20,7 +20,10 @@ osSemaphoreCreate( osCounter_t initial )
 	Semaphore_t* semaphore = memory_allocateFromHeap( sizeof(Semaphore_t), &kernelMemoryList );
 
 	if( semaphore == NULL )
+	{
+		OS_ASSERT(0);
 		return 0;
+	}
 
 	semaphore->counter = initial;
 	prioritizedList_init( &semaphore->threads );
@@ -90,7 +93,14 @@ osCounter_t
 osSemaphoreGetCounter( osHandle_t h )
 {
 	Semaphore_t* semaphore = (Semaphore_t*) h;
-	return semaphore->counter;
+	osCounter_t ret;
+
+	osThreadEnterCritical();
+	{
+		ret = semaphore->counter;
+	}
+	osThreadExitCritical();
+	return ret;
 }
 
 void
@@ -132,7 +142,16 @@ osBool_t
 osSemaphorePeekWait( osHandle_t h )
 {
 	Semaphore_t* semaphore = (Semaphore_t*) h;
-	return semaphore->counter != 0;
+
+	osBool_t ret;
+
+	osThreadEnterCritical();
+	{
+		ret = semaphore->counter != 0;
+	}
+	osThreadExitCritical();
+
+	return ret;
 }
 
 osBool_t

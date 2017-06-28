@@ -17,11 +17,16 @@
 osHandle_t
 osMutexCreate( void )
 {
+	/* allocate a new mutex control block */
 	Mutex_t* mutex = memory_allocateFromHeap( sizeof(Mutex_t), &kernelMemoryList );
 
 	if( mutex == NULL )
+	{
+		OS_ASSERT(0);
 		return 0;
+	}
 
+	/* initialize the mutex control block */
 	mutex->locked = false;
 	prioritizedList_init( &mutex->threads );
 
@@ -35,6 +40,7 @@ osMutexDelete( osHandle_t h )
 
 	osThreadEnterCritical();
 	{
+		/* unblock all threads */
 		thread_makeAllReady( & mutex->threads );
 
 		if( threads_ready.first->value < currentThread->priority )
@@ -45,6 +51,7 @@ osMutexDelete( osHandle_t h )
 	}
 	osThreadExitCritical();
 
+	/* free the mutex control block */
 	memory_returnToHeap( mutex, & kernelMemoryList );
 }
 
@@ -52,7 +59,16 @@ osBool_t
 osMutexPeekLock( osHandle_t h )
 {
 	Mutex_t* mutex = (Mutex_t*) h;
-	return mutex->locked == false;
+
+	osBool_t result;
+
+	osThreadEnterCritical();
+	{
+		result = mutex->locked == false;
+	}
+	osThreadExitCritical();
+
+	return result;
 }
 
 osBool_t

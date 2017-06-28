@@ -21,7 +21,10 @@ osSignalCreate( osCounter_t size )
 {
 	Signal_t *signal = memory_allocateFromHeap( sizeof(Signal_t), & kernelMemoryList );
 	if( signal == NULL )
+	{
+		OS_ASSERT(0);
 		return 0;
+	}
 
 	prioritizedList_init( &signal->threadsOnSignal );
 	prioritizedList_init( &signal->threadsOnAnySignal );
