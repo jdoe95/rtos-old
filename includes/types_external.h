@@ -18,26 +18,12 @@
 #ifndef H16488323_48F4_461D_8B3F_D30921D74E5A
 #define H16488323_48F4_461D_8B3F_D30921D74E5A
 
-#include <stdint.h>
-#include <limits.h>
-#include <stddef.h>
-#include <stdbool.h>
-
 #include "config.h"
 
-/* types  */
-typedef bool					osBool_t;
-typedef uintptr_t				osHandle_t;
-typedef uint32_t		 		osCounter_t;
-typedef uint8_t 				osByte_t;
-typedef void* 					osCode_t;
-
-#define OS_PRIO_LOWEST			UINT32_MAX /* largest value of osCounter_t */
-
-typedef	enum {OSTHREAD_READY = 0, OSTHREAD_BLOCKED, OSTHREAD_SUSPENDED}
+typedef enum {OSTHREAD_READY = 0, OSTHREAD_BLOCKED, OSTHREAD_SUSPENDED}
 osThreadState_t;
 
-typedef	enum {OSTIMERMODE_ONESHOT = 0, OSTIMERMODE_PERIODIC}
+typedef enum {OSTIMERMODE_ONESHOT = 0, OSTIMERMODE_PERIODIC}
 osTimerMode_t;
 
 #endif /* H16488323_48F4_461D_8B3F_D30921D74E5A */

@@ -61,20 +61,20 @@ INLINE void memory_blockInsertAfterByCookie		( MemoryBlock_t* block, MemoryBlock
 INLINE void memory_blockRemoveByCookie			( MemoryBlock_t* block );
 
 NREENT void memory_blockInsertToMemoryList		( MemoryBlock_t* block, MemoryList_t* list );
-NREENT void memory_blockRemoveFromMemoryList	( MemoryBlock_t* block );
+NREENT void memory_blockRemoveFromMemoryList	( MemoryBlock_t* block, MemoryList_t* list );
 
 NREENT void memory_blockInsertToHeap		( MemoryBlock_t* block );
 NREENT void memory_blockRemoveFromHeap		( MemoryBlock_t* block );
 
 MemoryBlock_t* memory_blockSplit					( MemoryBlock_t* block, osCounter_t size );
 NREENT MemoryBlock_t* memory_blockMergeInHeap		( MemoryBlock_t* block );
-NREENT MemoryBlock_t* memory_blockFindInHeap		( MemoryBlock_t* block );
+NREENT MemoryBlock_t* memory_blockFindInHeap		( void* blockStartAddress );
 
 NREENT MemoryBlock_t* memory_getBlockFromHeap( osCounter_t size );
 NREENT INLINE void memory_returnBlockToHeap( MemoryBlock_t* block );
 
 void* memory_allocateFromHeap( osCounter_t size, MemoryList_t* destination );
-void memory_returnToHeap( void* p );
+void memory_returnToHeap( void* p, MemoryList_t* source );
 
 INLINE void* memory_getPointerFromBlock( MemoryBlock_t* block );
 INLINE MemoryBlock_t* memory_getBlockFromPointer( void *p );
@@ -107,16 +107,11 @@ NREENT void queue_writeAhead( Queue_t* queue, const void* data, osCounter_t size
 /**************************************************************************
  * TIMER
  **************************************************************************/
-INLINE void timer_initializeThreadList( TimerThreadList_t* list );
-void timer_initializeThreadListItem( TimerThreadListItem_t* item );
-void timer_initialize( Timer_t* timer, osTimerMode_t mode, osCode_t callback );
-void timer_threadListInsert( TimerThreadListItem_t* item, TimerThreadList_t* list );
-void timer_threadListRemove( TimerThreadListItem_t* item );
-NREENT TimerThreadListItem_t* timer_createPriority( osCounter_t priority );
-NREENT TimerThreadListItem_t* timer_searchPriority( osCounter_t priority );
-void timerTask( TimerThreadListItem_t* item );
-
-#include "inline_functions/timer.h"
+void timer_init( Timer_t* timer, osTimerMode_t mode, osCounter_t period, osCode_t callback,
+	TimerPriorityBlock_t* priorityBlock );
+NREENT TimerPriorityBlock_t* timer_createPriority( osCounter_t priority );
+NREENT TimerPriorityBlock_t* timer_searchPriority( osCounter_t priority );
+void timerTask( TimerPriorityBlock_t* volatile priorityBlock );
 
 /**************************************************************************
  * PORT

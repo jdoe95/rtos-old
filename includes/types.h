@@ -18,8 +18,9 @@
  * list are called list items. The end item and first item of the list are linked
  * together, forming a ring structure, so that no matter how an iterator traverses
  * the list, it will always point to items within the list, making pointer sanity
- * checks unnecessary. List header structures hold information of the list by keeping
- * track of the first item of the list, so that all the items can be accessed.
+ * checks unnecessary. List header structures hold information of the list by pointing
+ * to the first item of the list. All items can be accessed starting from any item in
+ * any direction.
  *
  * $$--listItemCookie:
  *
@@ -30,17 +31,15 @@
  *
  * $$--prioritizedList & notPrioritizedList:
  *
- *  List headers that keep track of items in the list.
+ *  List headers.
  *
  * $$--notPrioritizedListItem:
  *
- * 	More advanced list item, as the name indicates, is not prioritized. The items are
- * 	arranged in the list following no specific order. Every list item has a list pointer
- * 	and a container pointer. The list pointer allows its list header (thus the whole list)
- * 	to be accessed from this item if this item is in a list, while the container
- * 	pointer usually points to a bigger structure that holds this list item (i.e.
- * 	the object control block this list item is in), allowing the object control
- * 	block to be accessed.
+ * 	More advanced list item. The items are arranged in the list following no specific
+ * 	order. The list pointer allows its list header (thus the whole list) to be accessed
+ * 	from this item if this item is in a list, while the container pointer usually
+ * 	points to a bigger structure that holds this list item (i.e. the object control
+ * 	block this list item is in), allowing the object control block to be accessed.
  *
  * $$--prioritizedListItem:
  *
@@ -78,18 +77,18 @@
  * $$--MANAGEMENT OF HEAP BLOCKS
  *
  * Since the application might request a block of memory with a size of any possible
- * values, larger blocks in the heap will be splitted and then removed if the
+ * values, larger blocks in the heap will be splitted and then removed from the heap if the
  * application only requests only a small amount of memory. As a result, the heap blocks
  * can be of any size. But we can't define so many structs to describe each block of
  * a certain size. Instead, all heap blocks have a common section in the begining bytes,
  * called a block header, in which reside the list item structure and an unsigned number
  * that stores the total size of the memory block (including the header itself). The
  * memory after the block header, is simply left empty. When the block is given to the
- * application, a pointer to the empty portion of the it will be returned to the
- * application (the famous void* return value of malloc), and the applicaiton can make as
- * many modifications on the portion as it wants, so long as it doesn't make the pointer
- * go beyound the heap block or go into the header section, damaging this or other
- * blocks. From the kernel's point of view, operations on the blocks, simply become
+ * application, a pointer to the empty portion of the it will be returned (the famous
+ * void* return value of malloc), and the applicaiton can make as many modifications
+ * on the portion as it wants, so long as it doesn't make the pointer go beyound the
+ * heap block or go into the header section, damaging this or other  blocks. From the
+ * kernel's point of view, operations on the blocks, simply become
  * operations on the block headers.
  *
  * $$--MERGING ADJACENT BLOCKS
@@ -322,63 +321,65 @@ struct prioritizedListItem;
 struct notPrioritizedListItem;
 struct prioritizedList;
 struct notPrioritizedList;
-
-/* mmeory related */
-struct memoryBlock;
-struct memoryList;
-struct heap;
-
-/* various object control blocks */
-struct thread;
-struct signal;
-struct mutex;
-struct recursiveMutex;
-struct semaphore;
-struct queue;
-struct timer;
-
-/* timer thread list structures */
-struct timerThreadListItem;
-struct timerThreadList;
-
-/* varios wait structs */
-struct signalWait;
-struct signalAnyWait;
-struct mutexWait;
-struct semaphoreWait;
-struct queueWriteWait;
-struct queueReadWait;
-
-/* typdefs */
 typedef struct listItemCookie 				ListItemCookie_t;
 typedef struct prioritizedListItem 			PrioritizedListItem_t;
 typedef struct notPrioritizedListItem 		NotPrioritizedListItem_t;
 typedef struct prioritizedList 				PrioritizedList_t;
 typedef struct notPrioritizedList 			NotPrioritizedList_t;
+
+/* mmeory related */
+struct memoryBlock;
+struct memoryList;
+struct heap;
 typedef struct memoryBlock 					MemoryBlock_t;
 typedef struct memoryList 					MemoryList_t;
 typedef struct heap 						Heap_t;
+
+/* thread control block */
+struct thread;
 typedef struct thread 						Thread_t;
+
+/* signal related */
+struct signal;
+struct signalWait;
+struct signalAnyWait;
 typedef struct signal 						Signal_t;
 typedef struct signalWait 					SignalWait_t;
 typedef struct signalAnyWait				SignalAnyWait_t;
+
+/* mutex related */
+struct mutex;
+struct recursiveMutex;
+struct mutexWait;
 typedef struct mutex 						Mutex_t;
 typedef struct recursiveMutex 				RecursiveMutex_t;
 typedef struct mutexWait 					MutexWait_t;
+
+/* semaphore related */
+struct semaphore;
+struct semaphoreWait;
 typedef struct semaphore 					Semaphore_t;
 typedef struct semaphoreWait 				SemaphoreWait_t;
+
+/* queue related */
+struct queue;
+struct queueWriteWait;
+struct queueReadWait;
 typedef struct queue 						Queue_t;
 typedef struct queueWriteWait 				QueueWriteWait_t;
 typedef struct queueReadWait 				QueueReadWait_t;
-typedef struct timer 						Timer_t;
-typedef struct timerThreadListItem 			TimerThreadListItem_t;
-typedef struct timerThreadList				TimerThreadList_t;
+
+/* timer related */
+struct timer;
+struct timerPriority;
+typedef struct timer Timer_t;
+typedef struct timerPriorityBlock TimerPriorityBlock_t;
 
 #include "config.h"
 #include "types_external.h"
 
 /*************************************************************************/
-/* basic list item structure */
+/* basic list item structure, used for insert and remove operations */
 struct listItemCookie
 {
 	ListItemCookie_t *volatile prev;
@@ -438,10 +439,7 @@ struct memoryBlock
 	/* size of the memory block */
 	volatile osCounter_t size;
 
-	/* list that this block is in, =&heap or thread local memory list */
-	void* volatile list;
-
-	/* many empty bytes in the block might follow, starting here */
+	/* The block is of various size, many bytes in the block might follow. */
 };
 
 /* holds blocks removed from the heap. Blocks placed in this struct are in use */
@@ -692,54 +690,47 @@ struct queueWriteWait
 	const void *data;
 };
 /*************************************************************************/
-/* represents a particular timer priority, can collapse back
- * to listItemCookie */
-struct timerThreadListItem
-{
-	TimerThreadListItem_t* volatile prev;
-	TimerThreadListItem_t* volatile next;
-	TimerThreadList_t* volatile list;
+typedef void (*TimerCallback_t)( void* argument );
 
-	/* the daemon thread that calls all the callback functions in the
-	 * callback list */
-	Thread_t* volatile daemon;
-
-	/* the active timer list */
-	PrioritizedList_t timerList;
-
-	/* inactive timers */
-	NotPrioritizedList_t timerListInactive;
-};
-
-/* the list that manages all the timer threads */
-struct timerThreadList
-{
-	TimerThreadListItem_t* volatile first;
-};
-
-/* the timer control block. contains the callback function */
+/* the timer control block, represents one timer */
 struct timer
 {
-	/* allow access to the thread list item */
-	TimerThreadListItem_t* volatile threadListItem;
-
-	/* in order to be converted to a single prioritized list item, the
-	 * following two items stay together */
+	/* the following two items stay together in order to be converted to a
+	 * single PrioritizedListItem_t*
+	 */
 	NotPrioritizedListItem_t timerListItem;
 	osCounter_t volatile futureTime;
 
-	/* mode of the timer, one shot or periodic */
+	/* timer mode, periodic or one shot */
 	osTimerMode_t volatile mode;
 
 	/* period of delay */
 	osCounter_t volatile period;
 
-	/* the callback function and argument */
-	osCode_t callback;
-	void *volatile argument;
+	/* the callback function and argument of the timer */
+	TimerCallback_t volatile callback;
+	void * volatile argument;
+
+	/* allow access to the timerPriorityBlock control structure */
+	TimerPriorityBlock_t* volatile timerPriorityBlock;
 };
 
-typedef void (*TimerCallback_t)( void *argument );
+/* the timer priority block, represents a series of timer of the same priority */
+struct timerPriorityBlock
+{
+	/* to be inserted into the system timer priority list */
+	NotPrioritizedListItem_t timerPriorityListItem;
+
+	/* The daemon thread of the timers, is of a specific priority */
+	Thread_t* volatile daemon;
+
+	/* timers in this list are counting */
+	PrioritizedList_t timerActiveList;
+
+	/* timers in this list are not counting */
+	NotPrioritizedList_t timerInactiveList;
+};
+
 /*************************************************************************/
 
 #endif /* H69A8BA22_43BC_4DD0_A0DE_0D110859E2C9 */

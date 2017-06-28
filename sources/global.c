@@ -26,6 +26,6 @@ volatile osCounter_t systemTime;
 volatile osCounter_t criticalNesting;
 
 Thread_t idleThread;
-TimerThreadList_t timerThreadList;
+NotPrioritizedList_t timerPriorityList;
 
 osHandle_t terminationSignal;

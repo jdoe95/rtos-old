@@ -100,15 +100,15 @@ void			osSignalSendOne				( osHandle_t signal, const void* signalValue );
 void 			osSignalSendAll				( osHandle_t signal, const void* signalValue );
 osBool_t 		osSignalWaitAny				( osHandle_t signal, void* signalValue, osCounter_t timeout );
 /***********************************************************************************************/
-osHandle_t		osTimerCreate				( osTimerMode_t mode, osCounter_t priority, osCode_t callback );
+osHandle_t		osTimerCreate				( osTimerMode_t mode, osCounter_t priority, osCounter_t period, osCode_t callback );
 void 			osTimerDelete				( osHandle_t timer );
 void 			osTimerStart				( osHandle_t timer, osCounter_t period, void* argument );
 void 			osTimerStop					( osHandle_t timer );
 void 			osTimerReset				( osHandle_t timer );
+void 			osTimerSetPeriod			( osHandle_t timer, osCounter_t period );
+osCounter_t		osTimerGetPeriod			( osHandle_t timer );
 void 			osTimerSetMode				( osHandle_t timer, osTimerMode_t mode );
 osTimerMode_t	osTimerGetMode				( osHandle_t timer );
-void 			osTimerSetPeriod			( osHandle_t timer, osCounter_t period );
-osCounter_t 	osTimerGetPeriod			( osHandle_t timer );
 /***********************************************************************************************/
 
 #ifdef __cplusplus

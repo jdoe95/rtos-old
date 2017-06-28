@@ -4,172 +4,175 @@
 #include "../includes/functions.h"
 
 void
-timer_initializeThreadListItem( TimerThreadListItem_t* item )
-{
-	item->prev = NULL;
-	item->next = NULL;
-	item->list = NULL;
-	item->daemon = NULL;
-
-	prioritizedList_init( & item->timerList );
-	notPrioritizedList_init( & item->timerListInactive );
-}
-
-void
-timer_initialize( Timer_t* timer, osTimerMode_t mode, osCode_t callback )
+timer_init( Timer_t* timer, osTimerMode_t mode, osCounter_t period, osCode_t callback,
+	TimerPriorityBlock_t* priorityBlock )
 {
 	notPrioritizedList_itemInit( &timer->timerListItem, timer );
 	timer->futureTime = 0;
 	timer->mode = mode;
-	timer->period = 0;
+	timer->period = period;
 	timer->callback = callback;
 	timer->argument = NULL;
-	timer->threadListItem = NULL;
+	timer->timerPriorityBlock = priorityBlock;
 }
 
 void
-timer_threadListInsert( TimerThreadListItem_t* item, TimerThreadList_t* list )
+timer_priorityBlockInit( TimerPriorityBlock_t* priorityBlock, Thread_t* daemon )
 {
-	OS_ASSERT( item->list == NULL );
-
-	/* means that the list is empty */
-	if( list->first == NULL )
-	{
-		list->first = item;
-		item->prev = item;
-		item->next = item;
-	}
-	else
-	{
-		/* insert as last item */
-		listItemCookie_insertBefore( (ListItemCookie_t*)item, (ListItemCookie_t*)(list->first) );
-	}
-
-	item->list = list;
+	notPrioritizedList_itemInit( & priorityBlock->timerPriorityListItem, priorityBlock );
+	priorityBlock->daemon = daemon;
+	prioritizedList_init( & priorityBlock->timerActiveList );
+	notPrioritizedList_init( & priorityBlock->timerInactiveList );
 }
 
-void
-timer_threadListRemove( TimerThreadListItem_t* item )
-{
-	OS_ASSERT( item->list != NULL );
-
-	if( item == item->list->first )
-	{
-		item->list->first = item->list->first->next;
-
-		/* this means that the item is the only tiem in the list */
-		if( item == item->list->first )
-			item->list->first = NULL;
-	}
-
-	listItemCookie_remove( (ListItemCookie_t*) item );
-}
-
-TimerThreadListItem_t*
+TimerPriorityBlock_t*
 timer_createPriority( osCounter_t priority )
 {
-	osHandle_t thread;
-	TimerThreadListItem_t* item = (TimerThreadListItem_t*)
-		memory_allocateFromHeap( sizeof(TimerThreadListItem_t), & kernelMemoryList );
+	TimerPriorityBlock_t* block;
+	osHandle_t daemon;
 
-	if( item == NULL )
+	/* this function has to be called in a critical section because it accesses global variables */
+	OS_ASSERT( criticalNesting );
+
+	/* allocate a new priority block */
+	block = (TimerPriorityBlock_t*)
+		memory_allocateFromHeap( sizeof(TimerPriorityBlock_t), & kernelMemoryList );
+
+	/* check if allocated */
+	if( block == NULL )
 		return NULL;
 
-	timer_initializeThreadListItem( item );
+	/* create a daemon thread */
+	daemon = osThreadCreate( priority, (osCode_t) timerTask, TIMER_THREAD_STACK_SIZE, block );
 
-	/* create the daemon thread */
-	thread = osThreadCreate( priority, timerTask, TIMER_THREAD_STACK_SIZE, item );
-
-	if( thread == 0 )
+	/* check if thread created */
+	if( daemon == 0 )
 	{
-		memory_returnToHeap(item);
+		/* failed to create thread */
+		memory_returnToHeap( block, & kernelMemoryList );
 		return NULL;
 	}
 
-	item->daemon = (Thread_t*)thread;
-	timer_threadListInsert( item, & timerThreadList );
+	/* intiialize the newly allocated block */
+	timer_priorityBlockInit( block, (Thread_t*)daemon );
 
-	return item;
+	/* insert this priority block into the system timer priority list */
+	notPrioritizedList_insert( & block->timerPriorityListItem, & timerPriorityList );
+
+	return block;
 }
 
-TimerThreadListItem_t*
+TimerPriorityBlock_t*
 timer_searchPriority( osCounter_t priority )
 {
-	TimerThreadListItem_t* item;
+	NotPrioritizedListItem_t* i;
+	TimerPriorityBlock_t* priorityBlock;
 
-	if( timerThreadList.first != NULL )
+	/* this function has to be called in a critical section because it accesses global variables */
+	OS_ASSERT( criticalNesting );
+
+	if( timerPriorityList.first != NULL )
 	{
-		item = timerThreadList.first;
+		i = timerPriorityList.first;
 
 		do {
+			/* get the priority block associated with this list item */
+			priorityBlock = (TimerPriorityBlock_t*) i->container;
 
-			if( item->daemon->priority == priority )
-				return item;
+			if( priorityBlock->daemon->priority == priority )
+			{
+				/* match found */
+				return priorityBlock;
+			}
 
-			item = item->next;
-		} while( item != timerThreadList.first );
+			i = i->next;
+
+		} while( i != timerPriorityList.first );
 	}
 
 	return NULL;
 }
 
 osHandle_t
-osTimerCreate( osTimerMode_t mode, osCounter_t priority, osCode_t callback )
+osTimerCreate( osTimerMode_t mode, osCounter_t priority, osCounter_t period, osCode_t callback )
 {
+	TimerPriorityBlock_t* priorityBlock;
+
+	/* allocate a new timer control block */
 	Timer_t* timer = memory_allocateFromHeap( sizeof(Timer_t), & kernelMemoryList );
-	TimerThreadListItem_t* threadListItem;
 
+	/* check allocation */
 	if( timer == NULL )
+	{
 		return 0;
+	}
 
-	timer_initialize( timer, mode, callback );
-
-	/* check if priority is created */
+	/* check if has priority, if not, create priority */
 	osThreadEnterCritical();
 	{
-		threadListItem = timer_searchPriority(priority);
+		/* search for priotity */
+		priorityBlock = timer_searchPriority( priority );
 
-		if( threadListItem == NULL )
+		if( priorityBlock == NULL )
 		{
 			/* create priority */
-			threadListItem = timer_createPriority( priority );
-
-			/* failed to create priority */
-			if( threadListItem == NULL )
-			{
-				/* free timer control block */
-				memory_returnToHeap( timer );
-				osThreadExitCritical();
-				return 0;
-			}
+			priorityBlock = timer_createPriority( priority );
 		}
 	}
 	osThreadExitCritical();
 
-	timer->threadListItem = threadListItem;
-	/* insert into inactive timer list */
-	notPrioritizedList_insert( & timer->timerListItem, &threadListItem->timerListInactive );
+	/* check created priority */
+	if( priorityBlock == NULL )
+	{
+		/* failed to create priority, free the timer control block */
+		memory_returnToHeap( timer, & kernelMemoryList );
+		return 0;
+	}
 
-	return (osHandle_t)timer;
+	/* initialize the timer control block */
+	timer_init( timer, mode, period, callback, priorityBlock );
+
+	/* insert into inactive timer list to be started */
+	notPrioritizedList_insert( & timer->timerListItem, & priorityBlock->timerInactiveList );
+
+	return (osHandle_t) timer;
 }
 
 void
 osTimerDelete( osHandle_t timer )
 {
 	Timer_t* p = (Timer_t*) ( timer );
+	TimerPriorityBlock_t* priorityBlock;
 
 	osThreadEnterCritical();
 	{
-		if( p->timerListItem.list != NULL )
+		priorityBlock = p->timerPriorityBlock;
+
+		/* timer has to be in the active or inactive list */
+		OS_ASSERT( p->timerListItem.list );
+
+		/* this will remove the list item from priorritized list or not prioritized list,
+		 * whichever the item was in. */
+		notPrioritizedList_remove( &p->timerListItem );
+		memory_returnToHeap( p, & kernelMemoryList );
+
+		/* if the thread was suspended, it will not delete the timer priority block,
+		 * so it is necessary to check if there are still timers in the active or
+		 * inactive timer list */
+		if( (priorityBlock->timerActiveList.first == NULL) &&
+			(priorityBlock->timerInactiveList.first == NULL) )
 		{
-			/* this will remove the list item from priorritized list or not prioritized list,
-			 * whichever the item was in. */
-			notPrioritizedList_remove( &p->timerListItem );
+			/*  delete the thread then remove and free the priority block */
+			osThreadDelete( (osHandle_t) priorityBlock->daemon );
+
+			/* remove */
+			notPrioritizedList_remove( & priorityBlock->timerPriorityListItem );
+
+			/* free */
+			memory_returnToHeap( priorityBlock, & kernelMemoryList );
 		}
 	}
 	osThreadExitCritical();
-
-	memory_returnToHeap( p );
 }
 
 void
@@ -180,21 +183,25 @@ osTimerStart( osHandle_t timer, osCounter_t period, void* argument )
 	osThreadEnterCritical();
 	{
 		/* the timer has to be in the inactive list */
-		if( p->timerListItem.list == & p->threadListItem->timerListInactive )
+		if( p->timerListItem.list == (void*) & p->timerPriorityBlock->timerInactiveList )
 		{
 			p->argument = argument;
 
-			/* set the timeout period and time of first wakeup */
+			/* set the timeout period and the time of first wakeup */
 			p->period = period;
 			p->futureTime = systemTime + period;
 
 			/* move this timer to the active list */
 			notPrioritizedList_remove( & p->timerListItem );
-			prioritizedList_insert( (PrioritizedListItem_t*)& p->timerListItem, & p->threadListItem->timerList );
+			prioritizedList_insert( (PrioritizedListItem_t*) & p->timerListItem, & p->timerPriorityBlock->timerActiveList );
 
-			/* check if the thread is alive */
-			if( p->threadListItem->daemon->state == OSTHREAD_SUSPENDED )
-				osThreadResume( (osHandle_t) p->threadListItem->daemon );
+			/* check if daemon thread is suspended */
+			if( p->timerPriorityBlock->daemon->state == OSTHREAD_SUSPENDED )
+			{
+				/* resume daemon thread */
+				osThreadResume( (osHandle_t) p->timerPriorityBlock->daemon);
+			}
+
 		}
 	}
 	osThreadExitCritical();
@@ -207,12 +214,14 @@ osTimerStop( osHandle_t timer )
 
 	osThreadEnterCritical();
 	{
-		/* the timer has to be in the active list */
-		if( p->timerListItem.list == (void*) & p->threadListItem->timerList )
+		/* if in active list, remove from it */
+		if( p->timerListItem.list == (void*) & p->timerPriorityBlock->timerActiveList )
 		{
-			/* remove the timer from the active list, and put it into the inactive list */
-			prioritizedList_remove( (PrioritizedListItem_t*)& p->timerListItem );
-			notPrioritizedList_insert( &p->timerListItem, & p->threadListItem->timerListInactive );
+			/* remove */
+			prioritizedList_remove( (PrioritizedListItem_t*) & p->timerListItem );
+
+			/* insert into inactive list */
+			notPrioritizedList_insert( & p->timerListItem, & p->timerPriorityBlock->timerInactiveList );
 		}
 	}
 	osThreadExitCritical();
@@ -225,12 +234,12 @@ osTimerReset( osHandle_t timer )
 
 	osThreadEnterCritical();
 	{
-		/* the timer has to be in the active list to be reset */
-		if( p->timerListItem.list == (void*) & p->threadListItem->list )
+		/* if in the active list, remove, modify and reinsert */
+		if( p->timerListItem.list == (void*) & p->timerPriorityBlock->timerActiveList )
 		{
 			prioritizedList_remove( (PrioritizedListItem_t*) & p->timerListItem );
 			p->futureTime = systemTime + p->period;
-			prioritizedList_insert( (PrioritizedListItem_t*) & p->timerListItem, & p->threadListItem->timerList );
+			prioritizedList_insert( (PrioritizedListItem_t*) & p->timerListItem, & p->timerPriorityBlock->timerActiveList );
 		}
 	}
 	osThreadExitCritical();
@@ -241,8 +250,11 @@ osTimerSetPeriod( osHandle_t timer, osCounter_t period )
 {
 	Timer_t* p = (Timer_t*) ( timer );
 
-	/* atomic operation*/
-	p->period = period;
+	osThreadEnterCritical();
+	{
+		p->period = period;
+	}
+	osThreadExitCritical();
 }
 
 osCounter_t
@@ -250,58 +262,122 @@ osTimerGetPeriod( osHandle_t timer )
 {
 	Timer_t* p = (Timer_t*) ( timer );
 
-	return p->period;
+	osCounter_t ret;
+
+	osThreadEnterCritical();
+	{
+		ret = p->period;
+	}
+	osThreadExitCritical();
+
+	return ret;
 }
 
 void
-timerTask( TimerThreadListItem_t* item )
+osTimerSetMode( osHandle_t timer, osTimerMode_t mode )
 {
-	PrioritizedListItem_t* timerItem;
+	Timer_t* p = (Timer_t*) timer;
+
+	osThreadEnterCritical();
+	{
+		p->mode = mode;
+	}
+	osThreadExitCritical();
+}
+
+osTimerMode_t
+osTimerGetMode( osHandle_t timer )
+{
+	Timer_t* p = (Timer_t*) timer;
+
+	osTimerMode_t ret;
+
+	osThreadEnterCritical();
+	{
+		ret = p->mode;
+	}
+	osThreadExitCritical();
+
+	return ret;
+}
+
+/* the daemon task that calls the callback function when a timer in the active list timed out.
+ *
+ * If the timer active list is empty, while the inactive list is not, the thread will suspend
+ * itself, until an active timer is added, when the thread should be resumed from suspension.
+ * If both the active and inactive timer list is empty, the thread will exit after removing
+ * and freeing its timer priority block from the system timer priority list.
+ * */
+void
+timerTask( TimerPriorityBlock_t* volatile priorityBlock )
+{
+	PrioritizedListItem_t* timerListItem;
 	Timer_t* timer;
 
 	osThreadEnterCritical();
 	{
 		for( ; ; )
 		{
-			while( item->timerList.first != NULL )
+
+			while( priorityBlock->timerActiveList.first != NULL )
 			{
-				timerItem = item->timerList.first;
+				/* get the first timer control block */
+				timerListItem = priorityBlock->timerActiveList.first;
 
-				if( systemTime >= timerItem->value )
+				/* check if timed out */
+				if( systemTime >= timerListItem->value )
 				{
-					timer = (Timer_t*) timerItem->container;
+					/* timed out, call the callback function */
 
-					( (TimerCallback_t) timer->callback )( timer->argument );
+					/* get the timer control block from the list item */
+					timer = (Timer_t*) timerListItem->container;
 
-					prioritizedList_remove( timerItem );
+					/* call the callback function */
+					timer->callback( timer->argument );
+
+					/* remove the timer from the active list. If it's periodic,
+					 * update the future time and insert again. If it's one-shot,
+					 * insert into the inactive list */
+					prioritizedList_remove( timerListItem );
 
 					if( timer->mode == OSTIMERMODE_PERIODIC )
 					{
-						timerItem->value = systemTime + timer->period;
-						prioritizedList_insert( timerItem, &item->timerList );
+						timerListItem->value = systemTime + timer->period;
+
+						prioritizedList_insert( timerListItem, & priorityBlock->timerActiveList );
 					}
 					else
 					{
-						notPrioritizedList_insert( (NotPrioritizedListItem_t*) timerItem, & item-> timerListInactive );
+						notPrioritizedList_insert( & timer->timerListItem, & priorityBlock->timerInactiveList );
 					}
 				}
 				else
 				{
-					osThreadDelay( timerItem->value - systemTime );
+					/* not timed out, delay for remaining time */
+					osThreadDelay( timerListItem->value - systemTime );
 				}
-			}
 
-			if( item->timerListInactive.first == NULL )
-			{
-				timer_threadListRemove( item );
-				memory_returnToHeap(item);
-				break;
-			}
-			else
+			} /* while */
+
+			/* will go here once the active timer list becomes empty */
+			if( priorityBlock->timerInactiveList.first != NULL )
 			{
 				osThreadSuspend(0);
 			}
-		} /* for(; ;); */
+			else
+			{
+				/* remove the prioirty block from the system timer priority list */
+				notPrioritizedList_remove( & priorityBlock->timerPriorityListItem );
+
+				/* free the memory */
+				memory_returnToHeap( priorityBlock, & kernelMemoryList );
+
+				/* break the loop, exit */
+				break;
+			}
+
+
+		} /* for(; ;) */
 	}
 	osThreadExitCritical();
 }

@@ -48,7 +48,7 @@ osSignalDelete( osHandle_t h )
 	}
 	osThreadExitCritical();
 
-	memory_returnToHeap( signal );
+	memory_returnToHeap( signal, & kernelMemoryList );
 }
 
 osBool_t

@@ -18,7 +18,7 @@
 extern Heap_t 						heap;						/* Available dynamic memory in the system */
 extern MemoryList_t 				kernelMemoryList;			/* Memory allocated from the heap currently in use by the kernel. */
 
-extern TimerThreadList_t	 		timerThreadList;			/* List of timer lists. The timers are grouped by their daemon. */
+extern NotPrioritizedList_t			timerPriorityList;			/* List of timer lists. The timers are grouped by their daemon. */
 
 extern PrioritizedList_t 			threads_timed;				/* Threads in a timed-block state */
 extern PrioritizedList_t 			threads_ready;				/* Threads in ready state */

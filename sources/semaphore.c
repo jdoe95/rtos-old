@@ -45,7 +45,7 @@ osSemaphoreDelete( osHandle_t h )
 	}
 	osThreadExitCritical();
 
-	memory_returnToHeap( semaphore );
+	memory_returnToHeap( semaphore, & kernelMemoryList );
 }
 
 void

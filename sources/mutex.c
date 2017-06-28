@@ -45,7 +45,7 @@ osMutexDelete( osHandle_t h )
 	}
 	osThreadExitCritical();
 
-	memory_returnToHeap( mutex );
+	memory_returnToHeap( mutex, & kernelMemoryList );
 }
 
 osBool_t
@@ -167,7 +167,7 @@ osRecursiveMtuexDelete( osHandle_t h )
 	}
 	osThreadExitCritical();
 
-	memory_returnToHeap( mutex );
+	memory_returnToHeap( mutex, & kernelMemoryList );
 }
 
 osBool_t

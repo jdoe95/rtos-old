@@ -257,7 +257,7 @@ osQueueCreate( osCounter_t size )
 	osByte_t* memory = memory_allocateFromHeap( size, &kernelMemoryList );
 	if( memory == NULL )
 	{
-		memory_returnToHeap( queue );
+		memory_returnToHeap( queue, & kernelMemoryList );
 		return 0;
 	}
 
@@ -293,8 +293,8 @@ osQueueDelete( osHandle_t h )
 	}
 	osThreadExitCritical();
 
-	memory_returnToHeap( queue->memory );
-	memory_returnToHeap( queue );
+	memory_returnToHeap( queue->memory, & kernelMemoryList );
+	memory_returnToHeap( queue, & kernelMemoryList );
 }
 
 void

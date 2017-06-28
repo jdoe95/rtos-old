@@ -20,17 +20,15 @@ void
 memory_blockInit( MemoryBlock_t* block, osCounter_t size )
 {
 	OS_ASSERT( size >= memory_roundUpBlockSize(sizeof(MemoryBlock_t)) );
+
 	block->prev = block;
 	block->next = block;
 	block->size = size;
-	block->list = NULL;
 }
 
 void
 memory_blockInsertToMemoryList( MemoryBlock_t* block, MemoryList_t* list )
 {
-	OS_ASSERT( block->list == NULL );
-
 	if( list->first == NULL )
 	{
 		list->first = block;
@@ -40,17 +38,11 @@ memory_blockInsertToMemoryList( MemoryBlock_t* block, MemoryList_t* list )
 	else
 		/* insert as last block */
 		memory_blockInsertBeforeByCookie( block, list->first );
-
-	block->list = list;
 }
 
 void
-memory_blockRemoveFromMemoryList( MemoryBlock_t* block )
+memory_blockRemoveFromMemoryList( MemoryBlock_t* block, MemoryList_t* list )
 {
-	MemoryList_t* list = (MemoryList_t*) block->list;
-
-	OS_ASSERT( block->list != NULL );
-
 	if( block == list->first )
 	{
 		/* 'first' should always point into the list */
@@ -62,15 +54,12 @@ memory_blockRemoveFromMemoryList( MemoryBlock_t* block )
 	}
 
 	memory_blockRemoveByCookie( block );
-	block->list = NULL;
 }
 
 void
 memory_blockInsertToHeap( MemoryBlock_t* block )
 {
 	MemoryBlock_t* i;
-
-	OS_ASSERT( block->list == NULL );
 
 	/* this function has to be called in a critical section because it accesses global resources */
 	OS_ASSERT( criticalNesting );
@@ -98,6 +87,7 @@ memory_blockInsertToHeap( MemoryBlock_t* block )
 	}
 	else
 	{
+		/* start from second block */
 		i = heap.first->next;
 
 		do
@@ -110,39 +100,32 @@ memory_blockInsertToHeap( MemoryBlock_t* block )
 
 		memory_blockInsertBeforeByCookie( block, i );
 	}
-	block->list = &heap;
 }
 
 void
 memory_blockRemoveFromHeap( MemoryBlock_t* block )
 {
-	OS_ASSERT( block->list == & heap );
-
 	/* this function has to be called in a critical section because it accesses global resources */
 	OS_ASSERT( criticalNesting );
 
-	if( block == heap.first )
+	if( block == block->next )
+	{
+		/* this means that the block is the only block in the heap */
+		heap.current = NULL;
+		heap.first = NULL;
+	}
+	else if( block == heap.first )
 	{
 		/* 'first' should always point into the heap */
 		heap.first = heap.first->next;
-
-		/* this means that the block is the only block in the heap */
-		if( block == heap.first )
-			heap.first = NULL;
 	}
-
-	if( block == heap.current )
+	else if( block == heap.current )
 	{
 		/* 'current' should always point into the heap */
 		heap.current = heap.current->next;
-
-		/* this means that the block is the only block in the heap */
-		if( block == heap.current )
-			heap.current = NULL;
 	}
 
 	memory_blockRemoveByCookie( block );
-	block->list = NULL;
 }
 
 
@@ -150,8 +133,6 @@ MemoryBlock_t*
 memory_blockMergeInHeap( MemoryBlock_t* block )
 {
 	MemoryBlock_t* ret = block;
-
-	OS_ASSERT( block->list == &heap );
 
 	/* this function has to be called in a critical section because it accesses global resources */
 	OS_ASSERT( criticalNesting );
@@ -191,8 +172,12 @@ memory_blockMergeInHeap( MemoryBlock_t* block )
 	return ret;
 }
 
+/* find if a block with a specific start address exists in a heap.
+ * If so, the block will be returned.
+ * If not, NULL will be returned.
+ */
 MemoryBlock_t*
-memory_blockFindInHeap( MemoryBlock_t* block )
+memory_blockFindInHeap( void* blockStartAddress )
 {
 	MemoryBlock_t* i;
 
@@ -205,8 +190,8 @@ memory_blockFindInHeap( MemoryBlock_t* block )
 		i = heap.first;
 
 		do {
-			if( i == block )
-				return block;
+			if( i == blockStartAddress )
+				return (MemoryBlock_t*)blockStartAddress;
 
 			i = i->next;
 
@@ -216,6 +201,10 @@ memory_blockFindInHeap( MemoryBlock_t* block )
 	return NULL;
 }
 
+/* split a block so that it can be 'size' and return the new block.
+ * If the block to be splitted is in a memory list or the heap,
+ * the new block will not be inserted into the memory list or heap.
+ */
 MemoryBlock_t*
 memory_blockSplit( MemoryBlock_t* block, osCounter_t size )
 {
@@ -231,6 +220,7 @@ memory_blockSplit( MemoryBlock_t* block, osCounter_t size )
 	return newBlock;
 }
 
+/* get a block of 'size' from heap, splitting larger blocks in the heap if necessary */
 MemoryBlock_t*
 memory_getBlockFromHeap( osCounter_t size )
 {
@@ -247,20 +237,28 @@ memory_getBlockFromHeap( osCounter_t size )
 		/* calculated size that will make the heap stay aligned */
 		size = memory_roundUpBlockSize( size + memory_roundUpBlockSize( sizeof(MemoryBlock_t) ) );
 
-		/* start searching from current block */
+		/* start searching from current block (next fit algorithm) */
 		i = heap.current;
 
 		do
 		{
+			/* loop through the heap to find a block that is large enough */
+
 			if( size <= i->size )
 			{
+				/* the remaining space of the block if the block is to be splitted */
 				remainingSpace = i->size - size;
 
 				/* split if remaining space greater than minimum block size */
-				if( remainingSpace >= memory_roundUpBlockSize( sizeof(MemoryBlock_t) ) ) {
-					/* set current pointer to the newly splitted block, and insert it into the heap */
+				if( remainingSpace >= memory_roundUpBlockSize( sizeof(MemoryBlock_t) ) )
+				{
+					/* split the block and get the newly splitted block */
 					block = memory_blockSplit( i, size );
+
+					/* insert the new block into the heap */
 					memory_blockInsertToHeap( block );
+
+					/* set current pointer to the newly splitted block (next fit algorithm) */
 					heap.current = block;
 				}
 
@@ -273,12 +271,17 @@ memory_getBlockFromHeap( osCounter_t size )
 				i = i->next;
 
 		} while( i != heap.current );
+
 		/* legit block not found */
 		i = NULL;
 	}
+
 	return i;
 }
 
+/* allocate a piece of memory and specify the destination for the allocated block
+ * return the pointer to the free memory area of the block
+ */
 void*
 memory_allocateFromHeap( osCounter_t size, MemoryList_t* destination )
 {
@@ -302,14 +305,17 @@ memory_allocateFromHeap( osCounter_t size, MemoryList_t* destination )
 	return memory_getPointerFromBlock( block );
 }
 
+/* put a piece of memory back to the heap and specify where the memory block
+ * is coming from (should be equal to 'destination' when calling memory_allocateFromHeap)
+ */
 void
-memory_returnToHeap( void* p )
+memory_returnToHeap( void* p, MemoryList_t* source )
 {
 	MemoryBlock_t* block = memory_getBlockFromPointer( p );
 
 	osThreadEnterCritical();
 	{
-		memory_blockRemoveFromMemoryList( block );
+		memory_blockRemoveFromMemoryList( block, source );
 		memory_returnBlockToHeap( block );
 	}
 	osThreadExitCritical();
@@ -318,13 +324,13 @@ memory_returnToHeap( void* p )
 void*
 osMemoryAllocate( osCounter_t size )
 {
-	return memory_allocateFromHeap( size, &currentThread->localMemory );
+	return memory_allocateFromHeap( size, & currentThread->localMemory );
 }
 
 void
 osMemoryFree( void *p )
 {
-	memory_returnToHeap( p );
+	memory_returnToHeap( p, & currentThread->localMemory );
 }
 
 void*
@@ -332,6 +338,7 @@ osMemoryReallocate( void*p, osCounter_t newSize )
 {
 	void *newP;
 	MemoryBlock_t *block = memory_getBlockFromPointer(p), *tempBlock;
+	osBool_t copy = false;
 
 	osCounter_t currentSize = block->size,
 		targetSize = memory_roundUpBlockSize( newSize + memory_roundUpBlockSize(sizeof(MemoryBlock_t)) ),
@@ -346,75 +353,86 @@ osMemoryReallocate( void*p, osCounter_t newSize )
 		osMemoryFree(p);
 		p = NULL;
 	}
-	else if( targetSize == currentSize )
-	{
-		/* do nothing */
-	}
 	else if( targetSize > currentSize )
 	{
+		/* calculate number of missing bytes */
 		tempSize = targetSize - currentSize;
 
 		osThreadEnterCritical();
 		{
-			/* check if consecutive block is free */
+			/* check if a consecutive block is in the heap */
 			tempBlock = memory_blockFindInHeap( (MemoryBlock_t*)((osByte_t*) block + block->size) );
+
 			if( tempBlock != NULL )
 			{
+				/* found a consecutive free block */
 				if( tempBlock->size >= tempSize )
 				{
 					/* check if block in heap is splittable */
 					if( tempBlock->size - tempSize >= memory_roundUpBlockSize(sizeof(MemoryBlock_t)) )
 					{
-						/* split the block  */
+						/* split the block and insert the newly splitted block to the heap */
 						memory_blockInsertToHeap(memory_blockSplit( tempBlock, tempSize ));
 
-						/* append to original block by simply updating the size field */
+						/* append by simply updating the size field */
 						block->size = targetSize;
 					}
 					else
 					{
-						/*  append the whole block */
+						/* remove the whole block from heap and append the whole block */
 						memory_blockRemoveFromHeap(tempBlock);
 						block->size += tempBlock->size;
 					}
 				}
 				else
 				{
-					/* block found, but not enough size */
-					goto copy;
+					/* block found, but not of enough size */
+					copy = true;
 				}
 			}
 			else
 			{
 				/* block not found */
-copy:
+				copy = true;
+			}
+
+			/* allocate new memory and copy the old content */
+			if( copy )
+			{
 				newP = osMemoryAllocate( newSize );
 
 				if( newP != NULL )
 				{
+					/* copy old content */
 					memcpy( newP, p, currentSize );
+
+					/* free the old memory after copying */
 					osMemoryFree(p);
+
+					/* set return value */
 					p = newP;
 				}
 				else
 				{
-					/* failed to allocate new memory */
-					osMemoryFree(p);
+					/* Failed to allocate new memory. Set the return value to NULL.
+					 * The application still get to keep the old memory. */
 					p = NULL;
 				}
 			}
 		}
 		osThreadExitCritical();
 	}
-	else // target size < current size
+	else /* target size < current size */
 	{
+		/* calculate number of redundant bytes */
 		tempSize = currentSize - targetSize;
 
-		/* check if block in memory list is splittable */
+		/* check if block is splittable */
 		if( tempSize >= memory_roundUpBlockSize(sizeof(MemoryBlock_t)) )
 		{
 			osThreadEnterCritical();
 			{
+				/* split the block and return the redundant new block to heap */
 				memory_returnBlockToHeap(memory_blockSplit( block, targetSize ));
 			}
 			osThreadExitCritical();
@@ -424,6 +442,7 @@ copy:
 	return p;
 }
 
+/* get the number of bytes that is actually allocated */
 osCounter_t
 osMemoryUsableSize( void *p )
 {

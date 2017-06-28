@@ -3,33 +3,6 @@
 #include "../includes/global.h"
 #include "../includes/functions.h"
 
-/* kernel level mutual exclusion. Supports nesting. See type.h */
-void
-osThreadEnterCritical( void )
-{
-	/* enter critical section before accessing global resource 'criticalNesting' */
-	port_disableInterrupts();
-	criticalNesting++;
-}
-
-/* kernel level mutual exclusion. Supports nesting. See type.h */
-void
-osThreadExitCritical( void )
-{
-	if( criticalNesting > 1 )
-		criticalNesting--;
-
-	else if( criticalNesting == 1 )
-	{
-		criticalNesting = 0;
-		port_enableInterrupts();
-	}
-	else
-	{
-		// does nothing
-	}
-}
-
 /* this function's address should be stored in the last frame
  * of the thread's stack in order for it to be popped out to the PC
  * if the thread returns. As a result, the thread will jump here. */
@@ -63,9 +36,6 @@ thread_makeReady( Thread_t* thread )
 
 	/* the thread to be readied must not be in the ready list */
 	OS_ASSERT( thread->schedulerListItem.list != (void* )&threads_ready );
-
-	/* the thread to be readied must not be in a ready state */
-	OS_ASSERT( thread->state != OSTHREAD_READY );
 
 	/* If the scheduler list item is in a thread list (usually some kernel object's blocking
 	 * list), remove it.
@@ -129,11 +99,12 @@ thread_blockCurrent( PrioritizedList_t* list, osCounter_t timeout, void* wait )
 	/* current thread is expected to be in a ready state */
 	OS_ASSERT( currentThread->state == OSTHREAD_READY );
 
-	/* make sure nextThread is always in the ready list */
+	/* make sure nextThread is always in the ready list. Current thread is about
+	 * to be removed from it */
 	if( currentThread == nextThread )
 	{
 		/* the idle thread is always in the list so it's unnecessary to check if nextThread
-		 * is set to itself because of the circularity of the list */
+		 * is set to itself because in that case it will be set to nextThread */
 		nextThread = (Thread_t*)( nextThread->schedulerListItem.next->container );
 	}
 
@@ -152,7 +123,7 @@ thread_blockCurrent( PrioritizedList_t* list, osCounter_t timeout, void* wait )
 		/* calculate next wakeup time */
 		currentThread->timerListItem.value = timeout + systemTime;
 
-		/* Insert into timerList. When this thread is readied, timerListItem will be
+		/* Insert into timed thread list. When this thread is readied, timerListItem will be
 		 * automatically removed from timed thread list. */
 		prioritizedList_insert( &currentThread->timerListItem, &threads_timed );
 	}
@@ -165,6 +136,7 @@ thread_blockCurrent( PrioritizedList_t* list, osCounter_t timeout, void* wait )
 
 	/* the critical nesting counter is stored per-thread, save criticalNesting to stack */
 	criticalNestingSave = criticalNesting;
+	criticalNesting = 0;
 
 	/* open a window for the context switcher */
 	port_enableInterrupts();
@@ -186,22 +158,51 @@ thread_blockCurrent( PrioritizedList_t* list, osCounter_t timeout, void* wait )
 	OS_ASSERT( currentThread->timerListItem.list == NULL );
 }
 
+/* kernel level mutual exclusion. Supports nesting. See type.h */
+void
+osThreadEnterCritical( void )
+{
+	/* enter critical section before accessing global resource 'criticalNesting' */
+	port_disableInterrupts();
+	criticalNesting++;
+}
+
+/* kernel level mutual exclusion. Supports nesting. See type.h */
+void
+osThreadExitCritical( void )
+{
+	if( criticalNesting > 1 )
+		criticalNesting--;
+
+	else if( criticalNesting == 1 )
+	{
+		criticalNesting = 0;
+		port_enableInterrupts();
+	}
+	else
+	{
+		// does nothing
+	}
+}
+
 osHandle_t
 osThreadCreate( osCounter_t priority, osCode_t code, osCounter_t stackSize, const void* argument )
 {
 	Thread_t* thread;
 	osByte_t* stackMemory;
 
+	/* allocate a thread control block */
 	thread = (Thread_t*) memory_allocateFromHeap( sizeof(Thread_t), &kernelMemoryList );
 	if( thread == NULL )
 	{
 		return 0;
 	}
 
+	/* allocate stack memory for the thread */
 	stackMemory = (osByte_t*) memory_allocateFromHeap( stackSize, &kernelMemoryList );
 	if( stackMemory == NULL )
 	{
-		memory_returnToHeap( thread );
+		memory_returnToHeap( thread, & kernelMemoryList );
 		return 0;
 	}
 
@@ -209,25 +210,13 @@ osThreadCreate( osCounter_t priority, osCode_t code, osCounter_t stackSize, cons
 	thread->PSP = port_makeFakeContext( stackMemory, stackSize, code, argument );
 	thread->priority = priority;
 	thread->stackMemory = stackMemory;
-	thread->state = OSTHREAD_BLOCKED;
 
 	osThreadEnterCritical();
 	{
-		/* insert into ready list. When to run depends on the scheduler */
 		thread_makeReady( thread );
 	}
 	osThreadExitCritical();
 	return (osHandle_t) thread;
-}
-
-osBool_t osThreadWaitTermination( osHandle_t thread, osCounter_t timeout )
-{
-	return osSignalWait( terminationSignal, & thread, timeout );
-}
-
-osBool_t osThreadWaitTerminationAny( osHandle_t* thread, osCounter_t timeout )
-{
-	return osSignalWaitAny( terminationSignal, thread, timeout );
 }
 
 void
@@ -266,14 +255,14 @@ osThreadDelete( osHandle_t thread )
 			/* point to a memory block */
 			block = p->localMemory.first;
 
-			memory_blockRemoveFromMemoryList( block );
+			memory_blockRemoveFromMemoryList( block, & currentThread->localMemory );
 			memory_returnBlockToHeap( block );
 		}
 
 		/* after this, the thread will still try to push some data onto
 		 * its stack. This, however, will not corrupt the heap.	 */
-		memory_returnToHeap( p->stackMemory );
-		memory_returnToHeap( p );
+		memory_returnToHeap( p->stackMemory, & kernelMemoryList );
+		memory_returnToHeap( p, & kernelMemoryList );
 
 		/* yield if deleting current thread */
 		if( p == currentThread )
@@ -286,6 +275,16 @@ osThreadDelete( osHandle_t thread )
 
 	/* send a signal about the thread's termination */
 	osSignalSendAll( terminationSignal, & thread );
+}
+
+osBool_t osThreadWaitTermination( osHandle_t thread, osCounter_t timeout )
+{
+	return osSignalWait( terminationSignal, & thread, timeout );
+}
+
+osBool_t osThreadWaitTerminationAny( osHandle_t* thread, osCounter_t timeout )
+{
+	return osSignalWaitAny( terminationSignal, thread, timeout );
 }
 
 void
@@ -324,10 +323,14 @@ osThreadSuspend( osHandle_t thread )
 				prioritizedList_remove( &p->timerListItem );
 			}
 
+			/* remove docked wait struct */
+			p->wait = NULL;
+
 			/* Only needs to yield when suspending current thread */
 			if( p == currentThread )
 			{
 				thread_setNew();
+				OS_ASSERT( currentThread != nextThread );
 
 				/* the critical nesting counter is stored per-thread, save criticalNesting to stack */
 				criticalNestingSave = criticalNesting;
@@ -342,7 +345,7 @@ osThreadSuspend( osHandle_t thread )
 				/* restore the critical nesting from the thread's stack */
 				criticalNesting = criticalNestingSave;
 			}
-		}
+		} /* if not suspended */
 	}
 	osThreadExitCritical();
 }
@@ -392,20 +395,23 @@ osThreadSetPriority( osHandle_t thread, osCounter_t priority )
 
 	osThreadEnterCritical();
 	{
-		list = (PrioritizedList_t*) ( p->schedulerListItem.list );
-
-		/* schedulerListItem might not be in any list, so it's necessary to check */
-		if( list != NULL )
+		if( priority != p->priority )
 		{
-			/* this will remove the list item from both prioritizedList and NotPrioritizedList,
-			 * whichever the item was in. */
-			notPrioritizedList_remove( &p->schedulerListItem );
+			list = (PrioritizedList_t*) ( p->schedulerListItem.list );
 
-			p->priority = priority;
-			prioritizedList_insert( (PrioritizedListItem_t*) ( &p->schedulerListItem ), list );
+			/* schedulerListItem might not be in any list, so it's necessary to check */
+			if( list != NULL )
+			{
+				/* this will remove the list item from both prioritizedList and NotPrioritizedList,
+				 * whichever the item was in. */
+				notPrioritizedList_remove( &p->schedulerListItem );
+
+				p->priority = priority;
+				prioritizedList_insert( (PrioritizedListItem_t*) ( &p->schedulerListItem ), list );
+			}
+			else
+				p->priority = priority;
 		}
-		else
-			p->priority = priority;
 	}
 	osThreadExitCritical();
 }

@@ -19,12 +19,22 @@ static osByte_t idleThreadStack[IDLE_THREAD_STACK_SIZE];
 void
 osInit( void )
 {
-	/* globals */
+	systemTime = 0;
+	criticalNesting = 0;
+
+	/* some init funcitons have to be called in a critical
+	 * section. This can also prevent osThreadCreate from
+	 * evoking the context switcher before osStart() */
+	osThreadEnterCritical();
+
+	/* heap */
 	memory_heapInit();
+	port_heapInit();
+
 	memory_listInit( & kernelMemoryList );
-	timer_initializeThreadList( & timerThreadList );
 	prioritizedList_init( & threads_timed );
 	prioritizedList_init( & threads_ready );
+	notPrioritizedList_init( & timerPriorityList );
 
 	/* create the idle thread */
 	thread_init( &idleThread );
@@ -36,23 +46,14 @@ osInit( void )
 	/* add the idle thread to the ready list */
 	prioritizedList_insert( (PrioritizedListItem_t*) ( &idleThread.schedulerListItem ), &threads_ready );
 
-	/* scheduler variables */
 	currentThread = &idleThread;
-	/* make sure nextThread is in the ready list */
 	nextThread = &idleThread;
 
 	/* thread termination signal */
 	terminationSignal = osSignalCreate(sizeof(osHandle_t));
+	OS_ASSERT( terminationSignal );
 
-	systemTime = 0;
-	criticalNesting = 0;
-
-	/* prevent context switcher from starting because the OS
-	 * is not ready. */
-	osThreadEnterCritical();
-
-	/* call port_HeapInit to add heap blocks */
-	port_heapInit();
+	osThreadExitCritical();
 }
 
 void
@@ -60,9 +61,6 @@ osStart( void )
 {
 	/* set currentThread to be the first readied highest priority thread */
 	currentThread = (Thread_t*) ( threads_ready.first->container );
-	osThreadExitCritical();
-
-	port_enableInterrupts();
 	port_startKernel();
 }
 
