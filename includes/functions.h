@@ -57,7 +57,7 @@ INLINE void memory_listInit( MemoryList_t* list );
 INLINE void memory_heapInit( void );
 
 INLINE void memory_blockInsertBeforeByCookie	( MemoryBlock_t* block, MemoryBlock_t* position );
-INLINE void memory_blockInsertAfterByCookie		( MemoryBlock_t* block, MemoryBlock_t* position );
+INLINE void memory_blockInsertAfterByCookie	( MemoryBlock_t* block, MemoryBlock_t* position );
 INLINE void memory_blockRemoveByCookie			( MemoryBlock_t* block );
 
 NREENT void memory_blockInsertToMemoryList		( MemoryBlock_t* block, MemoryList_t* list );
@@ -67,7 +67,7 @@ NREENT void memory_blockInsertToHeap		( MemoryBlock_t* block );
 NREENT void memory_blockRemoveFromHeap		( MemoryBlock_t* block );
 
 MemoryBlock_t* memory_blockSplit					( MemoryBlock_t* block, osCounter_t size );
-NREENT MemoryBlock_t* memory_blockMergeInHeap		( MemoryBlock_t* block );
+NREENT MemoryBlock_t* memory_blockMergeInHeap	( MemoryBlock_t* block );
 NREENT MemoryBlock_t* memory_blockFindInHeap		( void* blockStartAddress );
 
 NREENT MemoryBlock_t* memory_getBlockFromHeap( osCounter_t size );

@@ -238,7 +238,7 @@ queue_solveEquation( osHandle_t queue )
 			}
 		}
 
-	} // while( can read or can write );
+	} // while( canRead || canWrite );
 
 	if( threads_ready.first->value < currentThread->priority )
 	{
@@ -257,7 +257,6 @@ osQueueCreate( osCounter_t size )
 		return 0;
 	}
 
-
 	osByte_t* memory = memory_allocateFromHeap( size, &kernelMemoryList );
 	if( memory == NULL )
 	{
@@ -269,7 +268,7 @@ osQueueCreate( osCounter_t size )
 	queue->memory = memory;
 	queue->read = 0;
 	queue->write = 0;
-	queue->size = size;
+	queue->size = osMemoryUsableSize(memory);
 
 	prioritizedList_init( &queue->readingBehindThreads );
 	prioritizedList_init( &queue->readingThreads );
