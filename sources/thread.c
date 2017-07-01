@@ -249,6 +249,9 @@ osThreadDelete( osHandle_t thread )
 	if( thread == 0 )
 		p = currentThread;
 
+	/* send a signal about the thread's termination */
+	osSignalSendAll( terminationSignal, & thread );
+
 	osThreadEnterCritical();
 	{
 		/* schedulerListItem might not be in any lists, so it is necessary to check */
@@ -293,9 +296,6 @@ osThreadDelete( osHandle_t thread )
 		}
 	}
 	osThreadExitCritical();
-
-	/* send a signal about the thread's termination */
-	osSignalSendAll( terminationSignal, & thread );
 }
 
 osBool_t osThreadWaitTermination( osHandle_t thread, osCounter_t timeout )
