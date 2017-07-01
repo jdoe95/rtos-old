@@ -476,6 +476,7 @@ osThreadYield( void )
 {
 	osThreadEnterCritical();
 	{
+		nextThread = (Thread_t*) nextThread->schedulerListItem.next->container;
 		thread_setNew();
 
 		if( currentThread != nextThread )
