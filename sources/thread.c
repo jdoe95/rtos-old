@@ -221,6 +221,25 @@ osThreadCreate( osCounter_t priority, osCode_t code, osCounter_t stackSize, cons
 	return (osHandle_t) thread;
 }
 
+osThreadState_t
+osThreadGetState( osHandle_t thread )
+{
+	Thread_t* p = (Thread_t*) thread;
+
+	if( thread == 0 )
+		p = currentThread;
+
+	osThreadState_t ret;
+
+	osThreadEnterCritical();
+	{
+		ret = p->state;
+	}
+	osThreadExitCritical();
+
+	return ret;
+}
+
 void
 osThreadDelete( osHandle_t thread )
 {
