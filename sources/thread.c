@@ -250,7 +250,7 @@ osThreadDelete( osHandle_t thread )
 		p = currentThread;
 
 	/* send a signal about the thread's termination */
-	osSignalSendAll( terminationSignal, & thread );
+	osSignalSend( terminationSignal, & p );
 
 	osThreadEnterCritical();
 	{
