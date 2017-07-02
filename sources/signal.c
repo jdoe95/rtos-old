@@ -99,15 +99,16 @@ osSignalWaitAny( osHandle_t h, void* signalValue, osCounter_t timeout )
 }
 
 void
-osSignalSendOne( osHandle_t h, const void* signalValue )
+osSignalSend( osHandle_t h, const void* signalValue )
 {
 	Signal_t* signal = (Signal_t*)(h);
 
 	SignalWait_t* wait;
 	SignalAnyWait_t* anyWait;
 	Thread_t* thread;
+	PrioritizedListItem_t* i;
 
-	/* detect this at debug time. Blame the application. ;-) */
+	/* detect this in debug. Blame the application. ;-) */
 	OS_ASSERT( signalValue != NULL );
 
 	osThreadEnterCritical();
@@ -128,77 +129,40 @@ osSignalSendOne( osHandle_t h, const void* signalValue )
 			thread_makeReady(thread);
 		}
 
-		/* check if there are threads waiting for this specific signal,
-		 * first == NULL means list empty */
-		if( signal->threadsOnSignal.first != NULL )
+		/* check if there are threads waiting for this specific signal */
+		i = signal->threadsOnSignal.first;
+		if( i != NULL )
 		{
-			/* point to the first highest priority thread */
-			thread = (Thread_t*) signal->threadsOnSignal.first->container;
-			wait = (SignalWait_t*) thread->wait;
-
-			/* compare signal to the buffer provided by the thread. */
-			if( ! memcmp(wait->signalValue, signalValue, sizeof(signal->signalSize) ) )
+			do
 			{
-				/* signal matched */
-				wait->result = true;
-				thread_makeReady( thread );
-			}
-		}
+				/* point to a thread */
+				thread = (Thread_t*) i->container;
+				wait = (SignalWait_t*) thread->wait;
 
-		if( threads_ready.first->value < currentThread->priority )
-		{
-			thread_setNew();
-			port_yield();
-		}
-	}
-	osThreadExitCritical();
-}
+				/* compare signal to the buffer provided by the thread. */
+				if( ! memcmp(wait->signalValue, signalValue, sizeof(signal->signalSize) ) )
+				{
+					/* signal matched, point to next item before calling thread_makeReady to
+					 * remove from list */
+					if( i != i->next )
+					{
+						i = i->next;
+						wait->result = true;
+						thread_makeReady( thread );
+					}
+					else /* only item in the list */
+					{
+						wait->result = true;
+						thread_makeReady( thread );
+						break;
+					}
+				}
+				else
+				{
+					i = i->next;
+				}
 
-void
-osSignalSendAll( osHandle_t h, const void* signalValue )
-{
-	Signal_t* signal = (Signal_t*)(h);
-
-	SignalWait_t* wait;
-	SignalAnyWait_t* anyWait;
-	Thread_t* thread;
-
-	/* detect this at debug time. Blame the application. ;-) */
-	OS_ASSERT( signalValue != NULL );
-
-	osThreadEnterCritical();
-	{
-		/* check threads waiting for any signal
-		 * the loop will execute until the list is empty */
-		while( signal->threadsOnAnySignal.first != NULL )
-		{
-			/* point to a thread */
-			thread = (Thread_t*) signal->threadsOnAnySignal.first->container;
-			anyWait = (SignalAnyWait_t*) thread->wait;
-
-			/* copy signal to the buffer provided by the thread if not NULL */
-			if( anyWait->signalValue != NULL )
-				memcpy( anyWait->signalValue, signalValue, signal->signalSize );
-
-			anyWait->result = true;
-			thread_makeReady(thread);
-		}
-
-		/* check if there are threads waiting for this specific signal,
-		 * the loop will execute until the list is empty */
-		while( signal->threadsOnSignal.first != NULL )
-		{
-			/* point to a thread */
-			thread = (Thread_t*) signal->threadsOnSignal.first->container;
-			wait = (SignalWait_t*) thread->wait;
-
-			/* compare signal to the buffer provided by the thread. */
-			if( ! memcmp(wait->signalValue, signalValue, sizeof(signal->signalSize) ) )
-			{
-				/* signal matched */
-				wait->result = true;
-				thread_makeReady( thread );
-			}
+			} while( i != signal->threadsOnSignal.first );
 		}
 
 		if( threads_ready.first->value < currentThread->priority )
