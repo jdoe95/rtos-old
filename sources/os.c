@@ -114,5 +114,12 @@ OS_TICK_HANDLER_NAME( void )
 osCounter_t
 osGetTime( void )
 {
-	return systemTime;
+	osCounter_t ret;
+	osThreadEnterCritical();
+	{
+		ret = systemTime;
+	}
+	osThreadExitCritical();
+
+	return ret;
 }

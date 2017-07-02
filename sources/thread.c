@@ -462,7 +462,13 @@ osThreadSetPriority( osHandle_t thread, osCounter_t priority )
 osHandle_t
 osThreadGetCurrentHandle( void )
 {
-	return (osHandle_t) ( currentThread );
+	osHandle_t ret;
+	osThreadEnterCritical();
+	{
+		ret = (osHandle_t) currentThread;
+	}
+	osThreadExitCritical();
+	return ret;
 }
 
 void

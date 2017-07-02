@@ -221,7 +221,16 @@ osRecursiveMutexIsLocked( osHandle_t h )
 {
 	RecursiveMutex_t* mutex = (RecursiveMutex_t*) h;
 	OS_ASSERT(h);
-	return mutex->counter != 0;
+
+	osBool_t result;
+
+	osThreadEnterCritical();
+	{
+		result = mutex->counter != 0;
+	}
+	osThreadExitCritical();
+
+	return result;
 }
 
 osBool_t
