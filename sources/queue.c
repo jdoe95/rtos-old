@@ -282,6 +282,9 @@ void
 osQueueDelete( osHandle_t h )
 {
 	Queue_t* queue = (Queue_t*) h;
+
+	OS_ASSERT(h);
+
 	osThreadEnterCritical();
 	{
 		thread_makeAllReady( &queue->readingBehindThreads );
@@ -306,6 +309,8 @@ osQueueReset( osHandle_t h )
 {
 	Queue_t* queue = (Queue_t*) h;
 
+	OS_ASSERT(h);
+
 	osThreadEnterCritical();
 	{
 		queue->read = 0;
@@ -321,6 +326,8 @@ osQueueGetSize( osHandle_t h )
 	Queue_t* queue = (Queue_t*) h;
 	osCounter_t ret;
 
+	OS_ASSERT(h);
+
 	osThreadEnterCritical();
 	{
 		ret = queue->size;
@@ -335,6 +342,8 @@ osQueueGetUsedSize( osHandle_t h )
 {
 	Queue_t* queue = (Queue_t*) h;
 	osCounter_t result;
+
+	OS_ASSERT(h);
 
 	osThreadEnterCritical();
 	{
@@ -354,6 +363,8 @@ osQueueGetFreeSize( osHandle_t h )
 	Queue_t* queue = (Queue_t*) h;
 	osCounter_t result;
 
+	OS_ASSERT(h);
+
 	osThreadEnterCritical();
 	{
 		if( queue->write >= queue->read )
@@ -369,24 +380,32 @@ osQueueGetFreeSize( osHandle_t h )
 osBool_t
 osQueueIsFull( osHandle_t h )
 {
+	OS_ASSERT(h);
+
 	return osQueueGetFreeSize( h ) == 0;
 }
 
 osBool_t
 osQueueIsEmpty( osHandle_t h )
 {
+	OS_ASSERT(h);
+
 	return osQueueGetUsedSize( h ) == 0;
 }
 
 osBool_t
 osQueuePeekSend( osHandle_t h, osCounter_t size )
 {
+	OS_ASSERT(h);
+
 	return size <= osQueueGetFreeSize( h );
 }
 
 osBool_t
 osQueuePeekReceive( osHandle_t h, osCounter_t size )
 {
+	OS_ASSERT(h);
+
 	return size <= osQueueGetUsedSize( h );
 }
 
@@ -395,6 +414,8 @@ osQueueSendNonBlock( osHandle_t h, const void* data, osCounter_t size )
 {
 	Queue_t* queue = (Queue_t*) h;
 	osBool_t result = false;
+
+	OS_ASSERT(h);
 
 	osThreadEnterCritical();
 	{
@@ -416,6 +437,8 @@ osQueueSendAheadNonBlock( osHandle_t h, const void* data, osCounter_t size )
 	Queue_t* queue = (Queue_t*) h;
 	osBool_t result = false;
 
+	OS_ASSERT(h);
+
 	osThreadEnterCritical();
 	{
 		if( osQueuePeekSend( h, size ) )
@@ -435,6 +458,8 @@ osQueueReceiveNonBlock( osHandle_t h, void* data, osCounter_t size )
 {
 	Queue_t* queue = (Queue_t*) h;
 	osBool_t result = false;
+
+	OS_ASSERT(h);
 
 	osThreadEnterCritical();
 	{
@@ -456,6 +481,8 @@ osQueueReceiveBehindNonBlock( osHandle_t h, void* data, osCounter_t size )
 	Queue_t* queue = (Queue_t*) h;
 	osBool_t result = false;
 
+	OS_ASSERT(h);
+
 	osThreadEnterCritical();
 	{
 		if( osQueuePeekReceive( h, size ) )
@@ -476,6 +503,8 @@ osQueueSend( osHandle_t h, const void* data, osCounter_t size, osCounter_t timeo
 	Queue_t* queue = (Queue_t*) h;
 	osBool_t result = false;
 	QueueWriteWait_t writeWait;
+
+	OS_ASSERT(h);
 
 	osThreadEnterCritical();
 	{
@@ -506,6 +535,8 @@ osQueueSendAhead( osHandle_t h, const void* data, osCounter_t size, osCounter_t 
 	osBool_t result = false;
 	QueueWriteWait_t writeWait;
 
+	OS_ASSERT(h);
+
 	osThreadEnterCritical();
 	{
 		if( osQueuePeekSend( h, size ) )
@@ -535,6 +566,8 @@ osQueueReceive( osHandle_t h, void* data, osCounter_t size, osCounter_t timeout 
 	osBool_t result = false;
 	QueueReadWait_t readWait;
 
+	OS_ASSERT(h);
+
 	osThreadEnterCritical();
 	{
 		if( osQueuePeekReceive( h, size ) )
@@ -563,6 +596,8 @@ osQueueReceiveBehind( osHandle_t h, void* data, osCounter_t size, osCounter_t ti
 	Queue_t* queue = (Queue_t*) h;
 	osBool_t result = false;
 	QueueReadWait_t readWait;
+
+	OS_ASSERT(h);
 
 	osThreadEnterCritical();
 	{

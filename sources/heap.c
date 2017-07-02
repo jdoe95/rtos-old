@@ -330,6 +330,7 @@ osMemoryAllocate( osCounter_t size )
 void
 osMemoryFree( void *p )
 {
+	OS_ASSERT( p != NULL );
 	memory_returnToHeap( p, & currentThread->localMemory );
 }
 

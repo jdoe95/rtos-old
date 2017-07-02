@@ -38,6 +38,8 @@ osMutexDelete( osHandle_t h )
 {
 	Mutex_t* mutex = (Mutex_t*) h;
 
+	OS_ASSERT(h);
+
 	osThreadEnterCritical();
 	{
 		/* unblock all threads */
@@ -60,6 +62,8 @@ osMutexPeekLock( osHandle_t h )
 {
 	Mutex_t* mutex = (Mutex_t*) h;
 
+	OS_ASSERT(h);
+
 	osBool_t result;
 
 	osThreadEnterCritical();
@@ -76,6 +80,8 @@ osMutexLockNonBlock( osHandle_t h )
 {
 	Mutex_t* mutex = (Mutex_t*) h;
 	osBool_t result = false;
+
+	OS_ASSERT(h);
 
 	osThreadEnterCritical();
 	{
@@ -96,6 +102,8 @@ osMutexLock( osHandle_t h, osCounter_t timeout )
 	osBool_t result = false;
 	Mutex_t* mutex = (Mutex_t*) h;
 	MutexWait_t wait;
+
+	OS_ASSERT(h);
 
 	osThreadEnterCritical();
 	{
@@ -123,6 +131,8 @@ osMutexUnlock( osHandle_t h )
 	Mutex_t* mutex = (Mutex_t*) h;
 	Thread_t* thread;
 	MutexWait_t* wait;
+
+	OS_ASSERT(h);
 
 	osThreadEnterCritical();
 	{
@@ -171,6 +181,8 @@ osRecursiveMtuexDelete( osHandle_t h )
 {
 	RecursiveMutex_t* mutex = (RecursiveMutex_t*) h;
 
+	OS_ASSERT(h);
+
 	osThreadEnterCritical();
 	{
 		thread_makeAllReady( & mutex->threads );
@@ -192,6 +204,8 @@ osRecursiveMutexPeekLock( osHandle_t h )
 	RecursiveMutex_t* mutex = (RecursiveMutex_t*) h;
 	osBool_t result;
 
+	OS_ASSERT(h);
+
 	osThreadEnterCritical();
 	{
 		/* non-atomic read, must be in critical section */
@@ -206,6 +220,7 @@ osBool_t
 osRecursiveMutexIsLocked( osHandle_t h )
 {
 	RecursiveMutex_t* mutex = (RecursiveMutex_t*) h;
+	OS_ASSERT(h);
 	return mutex->counter != 0;
 }
 
@@ -214,6 +229,8 @@ osRecursiveMutexLockNonBlock( osHandle_t h )
 {
 	RecursiveMutex_t* mutex = (RecursiveMutex_t*) h;
 	osBool_t result = false;
+
+	OS_ASSERT(h);
 
 	osThreadEnterCritical();
 	{
@@ -235,6 +252,8 @@ osRecursiveMutexLock( osHandle_t h, osCounter_t timeout )
 	RecursiveMutex_t* mutex = (RecursiveMutex_t*) h;
 	MutexWait_t wait;
 	osBool_t result = false;
+
+	OS_ASSERT(h);
 
 	osThreadEnterCritical();
 	{
@@ -261,6 +280,8 @@ osRecursiveMutexUnlock( osHandle_t h )
 	RecursiveMutex_t* mutex = (RecursiveMutex_t*) h;
 	Thread_t* thread;
 	MutexWait_t* wait;
+
+	OS_ASSERT(h);
 
 	osThreadEnterCritical();
 	{

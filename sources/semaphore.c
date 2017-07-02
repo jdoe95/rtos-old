@@ -36,6 +36,8 @@ osSemaphoreDelete( osHandle_t h )
 {
 	Semaphore_t* semaphore = (Semaphore_t*) h;
 
+	OS_ASSERT(h);
+
 	osThreadEnterCritical();
 	{
 		thread_makeAllReady( & semaphore->threads );
@@ -57,6 +59,8 @@ osSemaphoreReset( osHandle_t h, osCounter_t initial )
 	Thread_t* thread;
 	SemaphoreWait_t* wait;
 	Semaphore_t* semaphore = (Semaphore_t*) h;
+
+	OS_ASSERT(h);
 
 	osThreadEnterCritical();
 	{
@@ -95,6 +99,8 @@ osSemaphoreGetCounter( osHandle_t h )
 	Semaphore_t* semaphore = (Semaphore_t*) h;
 	osCounter_t ret;
 
+	OS_ASSERT(h);
+
 	osThreadEnterCritical();
 	{
 		ret = semaphore->counter;
@@ -109,6 +115,8 @@ osSemaphorePost( osHandle_t h )
 	Semaphore_t* semaphore = (Semaphore_t*) h;
 	Thread_t* thread;
 	SemaphoreWait_t* wait;
+
+	OS_ASSERT(h);
 
 	osThreadEnterCritical();
 	{
@@ -142,8 +150,9 @@ osBool_t
 osSemaphorePeekWait( osHandle_t h )
 {
 	Semaphore_t* semaphore = (Semaphore_t*) h;
-
 	osBool_t ret;
+
+	OS_ASSERT(h);
 
 	osThreadEnterCritical();
 	{
@@ -159,6 +168,8 @@ osSemaphoreWaitNonBlock( osHandle_t h )
 {
 	Semaphore_t* semaphore = (Semaphore_t*) h;
 	osBool_t result = false;
+
+	OS_ASSERT(h);
 
 	osThreadEnterCritical();
 	{
@@ -178,6 +189,8 @@ osSemaphoreWait( osHandle_t h, osCounter_t timeout )
 	Semaphore_t* semaphore = (Semaphore_t*) h;
 	SemaphoreWait_t wait;
 	osBool_t result = false;
+
+	OS_ASSERT(h);
 
 	osThreadEnterCritical();
 	{

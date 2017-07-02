@@ -38,6 +38,8 @@ osSignalDelete( osHandle_t h )
 {
 	Signal_t* signal = (Signal_t*)(h);
 
+	OS_ASSERT(h);
+
 	osThreadEnterCritical();
 	{
 		thread_makeAllReady( & signal->threadsOnSignal );
@@ -62,6 +64,7 @@ osSignalWait( osHandle_t h, const void* signalValue, osCounter_t timeout )
 	osBool_t result;
 
 	/* detect this at debug time. Blame the application. ;-) */
+	OS_ASSERT(h);
 	OS_ASSERT( signalValue != NULL );
 
 	osThreadEnterCritical();
@@ -82,6 +85,8 @@ osSignalWaitAny( osHandle_t h, void* signalValue, osCounter_t timeout )
 	Signal_t* signal = (Signal_t*)(h);
 	SignalAnyWait_t wait;
 	osBool_t result;
+
+	OS_ASSERT(h);
 
 	/* signalValue can be NULL. which simply means waiting for any signal not
 	 * caring about the signal value */
@@ -109,6 +114,7 @@ osSignalSend( osHandle_t h, const void* signalValue )
 	PrioritizedListItem_t* i;
 
 	/* detect this in debug. Blame the application. ;-) */
+	OS_ASSERT(h);
 	OS_ASSERT( signalValue != NULL );
 
 	osThreadEnterCritical();

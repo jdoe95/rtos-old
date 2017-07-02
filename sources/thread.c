@@ -226,6 +226,8 @@ osThreadGetState( osHandle_t thread )
 {
 	Thread_t* p = (Thread_t*) thread;
 
+	OS_ASSERT(thread);
+
 	if( thread == 0 )
 		p = currentThread;
 
@@ -245,6 +247,8 @@ osThreadDelete( osHandle_t thread )
 {
 	Thread_t* p = (Thread_t*) thread;
 	MemoryBlock_t* block;
+
+	OS_ASSERT(thread);
 
 	if( thread == 0 )
 		p = currentThread;
@@ -300,6 +304,8 @@ osThreadDelete( osHandle_t thread )
 
 osBool_t osThreadWaitTermination( osHandle_t thread, osCounter_t timeout )
 {
+	OS_ASSERT(thread);
+
 	return osSignalWait( terminationSignal, & thread, timeout );
 }
 
@@ -315,6 +321,8 @@ osThreadSuspend( osHandle_t thread )
 
 	/* define the critical nesting counter on the thread's stack */
 	osCounter_t criticalNestingSave;
+
+	OS_ASSERT(thread);
 
 	if( thread == 0 )
 		p = currentThread;
@@ -376,6 +384,8 @@ osThreadResume( osHandle_t thread )
 {
 	Thread_t* p = (Thread_t*) thread;
 
+	OS_ASSERT(thread);
+
 	osThreadEnterCritical();
 	{
 		/* adds support for resuming multiple times */
@@ -399,6 +409,8 @@ osThreadGetPriority( osHandle_t thread )
 {
 	Thread_t* p = (Thread_t*) thread;
 
+	OS_ASSERT(thread);
+
 	if( thread == 0 )
 		p = currentThread;
 
@@ -418,6 +430,8 @@ osThreadSetPriority( osHandle_t thread, osCounter_t priority )
 {
 	Thread_t* p = (Thread_t*) thread;
 	PrioritizedList_t* list;
+
+	OS_ASSERT(thread);
 
 	if( thread == 0 )
 		p = currentThread;
