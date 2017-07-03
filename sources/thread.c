@@ -279,7 +279,7 @@ osThreadDelete( osHandle_t thread )
 			/* point to a memory block */
 			block = p->localMemory.first;
 
-			memory_blockRemoveFromMemoryList( block, & currentThread->localMemory );
+			memory_blockRemoveFromMemoryList( block, & p->localMemory );
 			memory_returnBlockToHeap( block );
 		}
 
