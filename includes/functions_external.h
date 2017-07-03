@@ -99,7 +99,7 @@ osBool_t 		osSignalWaitAny				( osHandle_t signal, void* signalValue, osCounter_
 /***********************************************************************************************/
 osHandle_t		osTimerCreate					( osTimerMode_t mode, osCounter_t priority, osCounter_t period, osCode_t callback );
 void 			osTimerDelete					( osHandle_t timer );
-void 			osTimerStart					( osHandle_t timer, osCounter_t period, void* argument );
+void 			osTimerStart					( osHandle_t timer, void* argument );
 void 			osTimerStop					( osHandle_t timer );
 void 			osTimerReset					( osHandle_t timer );
 void 			osTimerSetPeriod				( osHandle_t timer, osCounter_t period );

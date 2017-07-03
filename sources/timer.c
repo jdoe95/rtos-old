@@ -182,7 +182,7 @@ osTimerDelete( osHandle_t timer )
 }
 
 void
-osTimerStart( osHandle_t timer, osCounter_t period, void* argument )
+osTimerStart( osHandle_t timer, void* argument )
 {
 	Timer_t* p = (Timer_t*) ( timer );
 
@@ -193,9 +193,8 @@ osTimerStart( osHandle_t timer, osCounter_t period, void* argument )
 		{
 			p->argument = argument;
 
-			/* set the timeout period and the time of first wakeup */
-			p->period = period;
-			p->futureTime = systemTime + period;
+			/* set the time of first wakeup */
+			p->futureTime = systemTime + p->period;
 
 			/* move this timer to the active list */
 			notPrioritizedList_remove( & p->timerListItem );
