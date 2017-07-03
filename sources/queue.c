@@ -28,7 +28,7 @@ queue_write( Queue_t* queue, const void* data, osCounter_t size )
 	{
 		queue->memory[queue->write] = ( (const osByte_t*) data )[counter];
 
-		if( queue->write < queue->size )
+		if( queue->write < queue->size - 1 )
 			queue->write++;
 		else
 			queue->write = 0;
@@ -39,20 +39,20 @@ queue_write( Queue_t* queue, const void* data, osCounter_t size )
 void
 queue_writeAhead( Queue_t* queue, const void* data, osCounter_t size )
 {
-	osCounter_t counter = 0;
+	osCounter_t counter = size;
 
 	/* this function has to be called in a critical section because it accesses shared
 	 * queue resources. */
 	OS_ASSERT( criticalNesting );
 
-	for( ; counter < size; counter++ )
+	for( ; counter > 0; counter-- )
 	{
 		if( queue->read > 0 )
 			queue->read--;
 		else
 			queue->read = queue->size - 1;
 
-		queue->memory[queue->read] = ( (const osByte_t*) data )[counter];
+		queue->memory[queue->read] = ( (const osByte_t*) data )[counter-1];
 	}
 }
 
@@ -70,7 +70,7 @@ queue_read( Queue_t* queue, void* data, osCounter_t size )
 	{
 		( (osByte_t*) data )[counter] = queue->memory[queue->read];
 
-		if( queue->read < queue->size )
+		if( queue->read < queue->size - 1 )
 			queue->read++;
 		else
 			queue->read = 0;
@@ -81,20 +81,20 @@ queue_read( Queue_t* queue, void* data, osCounter_t size )
 void
 queue_readBehind( Queue_t* queue, void* data, osCounter_t size )
 {
-	osCounter_t counter = 0;
+	osCounter_t counter = size;
 
 	/* this function has to be called in a critical section because it accesses shared
 	 * queue resources. */
 	OS_ASSERT( criticalNesting );
 
-	for( ; counter < size; counter++ )
+	for( ; counter > 0; counter-- )
 	{
 		if( queue->write > 0 )
 			queue->write--;
 		else
 			queue->write = queue->size - 1;
 
-		( (osByte_t*) data )[counter] = queue->memory[queue->write];
+		( (osByte_t*) data )[counter-1] = queue->memory[queue->write];
 	}
 }
 
@@ -257,7 +257,9 @@ osQueueCreate( osCounter_t size )
 		return 0;
 	}
 
-	osByte_t* memory = memory_allocateFromHeap( size, &kernelMemoryList );
+	/* allocate size + 1 for the memory of the circular buffer */
+	OS_ASSERT( size >= 1 );
+	osByte_t* memory = memory_allocateFromHeap( size + 1, &kernelMemoryList );
 	if( memory == NULL )
 	{
 		memory_returnToHeap( queue, & kernelMemoryList );
@@ -330,7 +332,8 @@ osQueueGetSize( osHandle_t h )
 
 	osThreadEnterCritical();
 	{
-		ret = queue->size;
+		/* 1 byte in the circular buffer must always be left empty */
+		ret = queue->size - 1;
 	}
 	osThreadExitCritical();
 
@@ -350,7 +353,8 @@ osQueueGetUsedSize( osHandle_t h )
 		if( queue->write >= queue->read )
 			result = queue->write - queue->read;
 		else
-			result = queue->size - ( queue->read - queue->write );
+			/* result = (queue->size - 1) - ( queue->read - queue->write  - 1) */
+			result = queue->size - queue->read + queue->write;
 	}
 	osThreadExitCritical();
 
@@ -367,30 +371,15 @@ osQueueGetFreeSize( osHandle_t h )
 
 	osThreadEnterCritical();
 	{
-		if( queue->write >= queue->read )
-			result = queue->size - ( queue->write - queue->read );
+		if( queue->read > queue->write )
+			result = queue->read - queue->write - 1;
 		else
-			result = queue->read - queue->write;
+			/* result = (queue->size - 1) - ( queue->write - queue->read ) */
+			result = queue->size - 1 - queue->write + queue->read;
 	}
 	osThreadExitCritical();
 
 	return result;
-}
-
-osBool_t
-osQueueIsFull( osHandle_t h )
-{
-	OS_ASSERT(h);
-
-	return osQueueGetFreeSize( h ) == 0;
-}
-
-osBool_t
-osQueueIsEmpty( osHandle_t h )
-{
-	OS_ASSERT(h);
-
-	return osQueueGetUsedSize( h ) == 0;
 }
 
 osBool_t

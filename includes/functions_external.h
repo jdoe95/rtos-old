@@ -56,8 +56,6 @@ void 			osQueueReset					( osHandle_t queue );
 osCounter_t 	osQueueGetSize				( osHandle_t queue );
 osCounter_t 	osQueueGetUsedSize			( osHandle_t queue );
 osCounter_t 	osQueueGetFreeSize			( osHandle_t queue );
-osBool_t 		osQueueIsFull					( osHandle_t queue );
-osBool_t 		osQueueIsEmpty				( osHandle_t queue );
 osBool_t 		osQueuePeekSend				( osHandle_t queue, osCounter_t size );
 osBool_t 		osQueueSendNonBlock			( osHandle_t queue, const void *data, osCounter_t size );
 osBool_t 		osQueueSendAheadNonBlock		( osHandle_t queue, const void *data, osCounter_t size );
