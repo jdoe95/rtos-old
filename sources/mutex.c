@@ -245,9 +245,9 @@ osRecursiveMutexLockNonBlock( osHandle_t h )
 	{
 		if( ( mutex->counter == 0 ) || ( mutex->owner = currentThread ) )
 		{
-			result = true;
 			mutex->counter++;
 			mutex->owner = currentThread;
+			result = true;
 		}
 	}
 	osThreadExitCritical();
@@ -270,6 +270,7 @@ osRecursiveMutexLock( osHandle_t h, osCounter_t timeout )
 		{
 			mutex->counter++;
 			mutex->owner = currentThread;
+			result = true;
 		}
 		else
 		{
@@ -305,7 +306,7 @@ osRecursiveMutexUnlock( osHandle_t h )
 				/* if there are waiting threads, pass the lock to the first highest priority thread */
 				if( mutex->threads.first != NULL )
 				{
-					thread = (Thread_t*) mutex->threads.first;
+					thread = (Thread_t*) mutex->threads.first->container;
 					wait = (MutexWait_t*) thread->wait;
 
 					mutex->owner = thread;
