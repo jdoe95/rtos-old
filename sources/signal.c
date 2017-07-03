@@ -146,7 +146,7 @@ osSignalSend( osHandle_t h, const void* signalValue )
 				wait = (SignalWait_t*) thread->wait;
 
 				/* compare signal to the buffer provided by the thread. */
-				if( ! memcmp(wait->signalValue, signalValue, sizeof(signal->signalSize) ) )
+				if( memcmp(wait->signalValue, signalValue, signal->signalSize) == 0 )
 				{
 					/* signal matched, point to next item before calling thread_makeReady to
 					 * remove from list */
