@@ -3,13 +3,7 @@ RTOS
 
 A light weight embedded realtime operating system for microcontrollers.
 
-
 ****
-
-Table of Contents
-----
-
-
 
 General Description
 ----
@@ -94,7 +88,8 @@ For a complete API list, see [includes/functions_external.h][].
 - Recursive mutex
 - Signal
 
-### Handy Timer support
+### Others
+- Handy software timer support
 
 
 
