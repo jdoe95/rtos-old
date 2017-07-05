@@ -185,6 +185,17 @@ osThreadExitCritical( void )
 	}
 }
 
+void
+osThreadSetCriticalNesting( osCounter_t counter )
+{
+	/* enter critical section before modifying critical nesting counter */
+	port_disableInterrupts();
+	criticalNesting = counter;
+
+	if( counter == 0 )
+		port_enableInterrupts();
+}
+
 osHandle_t
 osThreadCreate( osCounter_t priority, osCode_t code, osCounter_t stackSize, const void* argument )
 {
