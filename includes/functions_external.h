@@ -42,6 +42,7 @@ void 			osThreadDelay				( osCounter_t timeout );
 void 			osThreadYield				( void );
 void 			osThreadEnterCritical		( void );
 void 			osThreadExitCritical		( void );
+osCounter_t		osThreadGetCriticalNesting( void );
 void 			osThreadSetCriticalNesting( osCounter_t counter );
 osBool_t 		osThreadWaitTermination	( osHandle_t thread, osCounter_t timeout );
 osBool_t		osThreadWaitTerminationAny( osHandle_t* thread, osCounter_t timeout );
