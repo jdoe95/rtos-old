@@ -1,3 +1,0 @@
-[submodule "portable"]
-	path = portable
-	url = git@github.com:jdoe95/rtos-port-cortex-m3-newlib.git
