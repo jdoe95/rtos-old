@@ -39,3 +39,6 @@
 *.hex
 *.elf
 
+# the portable folder
+portable/
+
