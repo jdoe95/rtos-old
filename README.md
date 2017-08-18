@@ -97,9 +97,12 @@ For a complete API list, see [includes/functions_external.h][].
 
 Getting Started
 ----
+To use the RTOS, you'll need a port. Search for rtos-port-* under this site, and clone the correct port into a folder under rtos main directory using the following command 
 
-TODO
-
+```bash
+cd rtos/
+git clone git@github.com:jdoe95/rtos-port-* portable
+```
 
 Documentation
 ----
