@@ -342,10 +342,8 @@ typedef struct thread 						Thread_t;
 /* signal related */
 struct signal;
 struct signalWait;
-struct signalAnyWait;
 typedef struct signal 						Signal_t;
 typedef struct signalWait 					SignalWait_t;
-typedef struct signalAnyWait				SignalAnyWait_t;
 
 /* mutex related */
 struct mutex;
@@ -513,21 +511,21 @@ struct thread
 /*************************************************************************/
 struct signal
 {
-	/* threads blocked for one particular signal */
+	/* threads blocked for signal */
 	PrioritizedList_t threadsOnSignal;
 
-	/* threads blocked for any signal */
-	PrioritizedList_t threadsOnAnySignal;
-
-	/* size of the signal, set on creation */
-	osCounter_t signalSize;
+	/* size of the signal info block, set on creation */
+	osCounter_t infoSize;
 };
 
 /* wait struct for threads intended to wait for a particular signal */
 struct signalWait
 {
-	/* buffer of the intended value of the signal, set by the blocking thread */
-	const void *signalValue;
+	/* Signal value to wait for, set by the waiting thread */
+	osSignalValue_t signalValue;
+
+	/* Additional signal information block buffer, set by the waiting thread */
+	void* info;
 
 	/* wait result, set to false by the blocking thread
 	 *
@@ -539,21 +537,6 @@ struct signalWait
 	volatile osBool_t result;
 };
 
-/* wait struct for threads intended to wait for any signal */
-struct signalAnyWait
-{
-	/* buffer of a signal holder, to recevie the signal, or NULL */
-	void *signalValue;
-
-	/* wait result, set to false by the blocking thread
-	 *
-	 * If the blocking thread timed out, this value will remain false
-	 *
-	 * Set by any thread sending the signal to true, indicating the blocked
-	 * thread's wish is fulfilled -- the interested signal is sent.
-	 */
-	volatile osBool_t result;
-};
 /*************************************************************************/
 struct mutex
 {

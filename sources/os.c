@@ -49,11 +49,6 @@ osInit( void )
 
 		currentThread = &idleThread;
 		nextThread = &idleThread;
-
-		/* thread termination signal */
-		terminationSignal = osSignalCreate(sizeof(osHandle_t));
-		OS_ASSERT( terminationSignal );
-
 	}
 	osThreadExitCritical();
 }

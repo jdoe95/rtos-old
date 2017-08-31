@@ -44,8 +44,6 @@ void 			osThreadEnterCritical		( void );
 void 			osThreadExitCritical		( void );
 osCounter_t		osThreadGetCriticalNesting( void );
 void 			osThreadSetCriticalNesting( osCounter_t counter );
-osBool_t 		osThreadWaitTermination	( osHandle_t thread, osCounter_t timeout );
-osBool_t		osThreadWaitTerminationAny( osHandle_t* thread, osCounter_t timeout );
 /***********************************************************************************************/
 void* 			osMemoryAllocate			( osCounter_t size );
 void*			osMemoryReallocate		( void *p, osCounter_t size );
@@ -93,11 +91,10 @@ osBool_t 		osRecursiveMutexLockNonBlock( osHandle_t mutex );
 osBool_t 		osRecursiveMutexLock			( osHandle_t mutex, osCounter_t timeout );
 void 			osRecursiveMutexUnlock		( osHandle_t mutex );
 /***********************************************************************************************/
-osHandle_t 		osSignalCreate					( osCounter_t size );
+osHandle_t 		osSignalCreate					( osCounter_t infoSize );
 void 			osSignalDelete					( osHandle_t signal );
-osBool_t 		osSignalWait					( osHandle_t signal, const void* signalValue, osCounter_t timeout );
-void 			osSignalSend					( osHandle_t signal, const void* signalValue );
-osBool_t 		osSignalWaitAny				( osHandle_t signal, void* signalValue, osCounter_t timeout );
+osBool_t 		osSignalWait					( osHandle_t signal, osSignalValue_t signalValue, void* info, osCounter_t timeout );
+void 			osSignalSend					( osHandle_t signal, osSignalValue_t signalValue, const void* info );
 /***********************************************************************************************/
 osHandle_t		osTimerCreate					( osTimerMode_t mode, osCounter_t priority, osCounter_t period, osCode_t callback );
 void 			osTimerDelete					( osHandle_t timer );

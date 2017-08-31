@@ -30,6 +30,4 @@ extern Thread_t *volatile 			nextThread;					/* thread from which new context sh
 extern volatile osCounter_t			systemTime;					/* Incremented on every tick */
 extern volatile osCounter_t 		criticalNesting;			/* Temporary value, saved on every thread's context */
 
-extern osHandle_t 					terminationSignal;
-
 #endif /* HA77D99B0_84F3_4AB4_A348_8723510F837E */

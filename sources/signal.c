@@ -17,7 +17,7 @@
 #include <string.h>
 
 osHandle_t
-osSignalCreate( osCounter_t size )
+osSignalCreate( osCounter_t infoSize )
 {
 	Signal_t *signal = memory_allocateFromHeap( sizeof(Signal_t), & kernelMemoryList );
 	if( signal == NULL )
@@ -27,8 +27,7 @@ osSignalCreate( osCounter_t size )
 	}
 
 	prioritizedList_init( &signal->threadsOnSignal );
-	prioritizedList_init( &signal->threadsOnAnySignal );
-	signal->signalSize = size;
+	signal->infoSize = infoSize;
 
 	return (osHandle_t)( signal );
 }
@@ -43,7 +42,6 @@ osSignalDelete( osHandle_t h )
 	osThreadEnterCritical();
 	{
 		thread_makeAllReady( & signal->threadsOnSignal );
-		thread_makeAllReady( & signal->threadsOnAnySignal );
 
 		if( threads_ready.first->value < currentThread->priority )
 		{
@@ -57,7 +55,7 @@ osSignalDelete( osHandle_t h )
 }
 
 osBool_t
-osSignalWait( osHandle_t h, const void* signalValue, osCounter_t timeout )
+osSignalWait( osHandle_t h, osSignalValue_t signalValue, void* info, osCounter_t timeout )
 {
 	Signal_t* signal = (Signal_t*)(h);
 	SignalWait_t wait;
@@ -65,10 +63,10 @@ osSignalWait( osHandle_t h, const void* signalValue, osCounter_t timeout )
 
 	/* detect this at debug time. Blame the application. ;-) */
 	OS_ASSERT(h);
-	OS_ASSERT( signalValue != NULL );
 
 	osThreadEnterCritical();
 	{
+		wait.info = info;
 		wait.signalValue = signalValue;
 		wait.result = false;
 		thread_blockCurrent( & signal->threadsOnSignal, timeout, & wait );
@@ -79,62 +77,20 @@ osSignalWait( osHandle_t h, const void* signalValue, osCounter_t timeout )
 	return result;
 }
 
-osBool_t
-osSignalWaitAny( osHandle_t h, void* signalValue, osCounter_t timeout )
-{
-	Signal_t* signal = (Signal_t*)(h);
-	SignalAnyWait_t wait;
-	osBool_t result;
-
-	OS_ASSERT(h);
-
-	/* signalValue can be NULL. which simply means waiting for any signal not
-	 * caring about the signal value */
-
-	osThreadEnterCritical();
-	{
-		wait.signalValue = signalValue;
-		wait.result = false;
-		thread_blockCurrent( & signal->threadsOnAnySignal, timeout, & wait );
-		result = wait.result;
-	}
-	osThreadExitCritical();
-
-	return result;
-}
-
 void
-osSignalSend( osHandle_t h, const void* signalValue )
+osSignalSend( osHandle_t h, osSignalValue_t signalValue, const void* info )
 {
 	Signal_t* signal = (Signal_t*)(h);
 
 	SignalWait_t* wait;
-	SignalAnyWait_t* anyWait;
 	Thread_t* thread;
 	PrioritizedListItem_t* i;
 
 	/* detect this in debug. Blame the application. ;-) */
 	OS_ASSERT(h);
-	OS_ASSERT( signalValue != NULL );
 
 	osThreadEnterCritical();
 	{
-		/* check threads waiting for any signal
-		 * the loop will execute until the list is empty */
-		while( signal->threadsOnAnySignal.first != NULL )
-		{
-			/* point to a thread */
-			thread = (Thread_t*) signal->threadsOnAnySignal.first->container;
-			anyWait = (SignalAnyWait_t*) thread->wait;
-
-			/* copy signal to the buffer provided by the thread if not NULL */
-			if( anyWait->signalValue != NULL )
-				memcpy( anyWait->signalValue, signalValue, signal->signalSize );
-
-			anyWait->result = true;
-			thread_makeReady(thread);
-		}
-
 		/* check if there are threads waiting for this specific signal */
 		i = signal->threadsOnSignal.first;
 		if( i != NULL )
@@ -146,7 +102,7 @@ osSignalSend( osHandle_t h, const void* signalValue )
 				wait = (SignalWait_t*) thread->wait;
 
 				/* compare signal to the buffer provided by the thread. */
-				if( memcmp(wait->signalValue, signalValue, signal->signalSize) == 0 )
+				if( wait->signalValue == signalValue )
 				{
 					/* signal matched, point to next item before calling thread_makeReady to
 					 * remove from list */
@@ -154,11 +110,21 @@ osSignalSend( osHandle_t h, const void* signalValue )
 					{
 						i = i->next;
 						wait->result = true;
+						if( signal->infoSize > 0 )
+						{
+							if( (wait->info != NULL) && (info != NULL) )
+								memcpy( wait->info, info, signal->infoSize );
+						}
 						thread_makeReady( thread );
 					}
 					else /* only item in the list */
 					{
 						wait->result = true;
+						if( signal->infoSize > 0 )
+						{
+							if( (wait->info != NULL) && (info != NULL) )
+								memcpy( wait->info, info, signal->infoSize );
+						}
 						thread_makeReady( thread );
 						break;
 					}
