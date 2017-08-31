@@ -513,9 +513,6 @@ struct signal
 {
 	/* threads blocked for signal */
 	PrioritizedList_t threadsOnSignal;
-
-	/* size of the signal info block, set on creation */
-	osCounter_t infoSize;
 };
 
 /* wait struct for threads intended to wait for a particular signal */

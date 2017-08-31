@@ -17,7 +17,7 @@
 #include <string.h>
 
 osHandle_t
-osSignalCreate( osCounter_t infoSize )
+osSignalCreate( void )
 {
 	Signal_t *signal = memory_allocateFromHeap( sizeof(Signal_t), & kernelMemoryList );
 	if( signal == NULL )
@@ -27,7 +27,6 @@ osSignalCreate( osCounter_t infoSize )
 	}
 
 	prioritizedList_init( &signal->threadsOnSignal );
-	signal->infoSize = infoSize;
 
 	return (osHandle_t)( signal );
 }
@@ -78,7 +77,7 @@ osSignalWait( osHandle_t h, osSignalValue_t signalValue, void* info, osCounter_t
 }
 
 void
-osSignalSend( osHandle_t h, osSignalValue_t signalValue, const void* info )
+osSignalSend( osHandle_t h, osSignalValue_t signalValue, const void* info, osCounter_t size )
 {
 	Signal_t* signal = (Signal_t*)(h);
 
@@ -110,20 +109,20 @@ osSignalSend( osHandle_t h, osSignalValue_t signalValue, const void* info )
 					{
 						i = i->next;
 						wait->result = true;
-						if( signal->infoSize > 0 )
+						if( size > 0 )
 						{
 							if( (wait->info != NULL) && (info != NULL) )
-								memcpy( wait->info, info, signal->infoSize );
+								memcpy( wait->info, info, size );
 						}
 						thread_makeReady( thread );
 					}
 					else /* only item in the list */
 					{
 						wait->result = true;
-						if( signal->infoSize > 0 )
+						if( size > 0 )
 						{
 							if( (wait->info != NULL) && (info != NULL) )
-								memcpy( wait->info, info, signal->infoSize );
+								memcpy( wait->info, info, size );
 						}
 						thread_makeReady( thread );
 						break;

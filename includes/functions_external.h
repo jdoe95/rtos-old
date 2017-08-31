@@ -91,10 +91,10 @@ osBool_t 		osRecursiveMutexLockNonBlock( osHandle_t mutex );
 osBool_t 		osRecursiveMutexLock			( osHandle_t mutex, osCounter_t timeout );
 void 			osRecursiveMutexUnlock		( osHandle_t mutex );
 /***********************************************************************************************/
-osHandle_t 		osSignalCreate					( osCounter_t infoSize );
+osHandle_t 		osSignalCreate					( void );
 void 			osSignalDelete					( osHandle_t signal );
 osBool_t 		osSignalWait					( osHandle_t signal, osSignalValue_t signalValue, void* info, osCounter_t timeout );
-void 			osSignalSend					( osHandle_t signal, osSignalValue_t signalValue, const void* info );
+void 			osSignalSend					( osHandle_t signal, osSignalValue_t signalValue, const void* info, osCounter_t size );
 /***********************************************************************************************/
 osHandle_t		osTimerCreate					( osTimerMode_t mode, osCounter_t priority, osCounter_t period, osCode_t callback );
 void 			osTimerDelete					( osHandle_t timer );
