@@ -46,11 +46,11 @@
  *  More advanced list item, but prioritized. The only difference between
  *  notPrioritizedListItem and prioritizedListItem is that the latter contains an
  *  additional value field which allows the list item to be inserted into the list
- *  with the items with the smallest numbers at the begining of the list. This list
+ *  with the items with the smallest numbers at the beginning of the list. This list
  *  is usually used by the scheduler to keep track of priorities or timeout values.
  *
  *  Item remove functions on prioritized and notPrioritized lists are essentially the
- *  same, because the structs are convertable. In some places having this can be
+ *  same, since the structs are convertible. In some places having this can be
  *  beneficial.
  *
  * ABOUT WAIT STRUCTS++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -70,36 +70,36 @@
  * Heap allows the kernel and application to allocate and free memory dynamically.
  * Freed memory can be allocated to other threads again. This enables highly efficient
  * memory utilization. The memory in the heap are managed by linking the unused memory
- * blocks together forming a doubly linked list, while the used memory are removed from
+ * blocks together forming a doubly linked list, while the used memory is removed from
  * the list and given to the application, and the freed memory returned by the application
- * are inserted back into the heap to be used again.
+ * is inserted back into the heap to be used again.
  *
  * $$--MANAGEMENT OF HEAP BLOCKS
  *
  * Since the application might request a block of memory with a size of any possible
- * values, larger blocks in the heap will be splitted and then removed from the heap if the
+ * values, larger blocks in the heap will be split and then removed from the heap if the
  * application only requests only a small amount of memory. As a result, the heap blocks
  * can be of any size. But we can't define so many structs to describe each block of
- * a certain size. Instead, all heap blocks have a common section in the begining bytes,
+ * a certain size. Instead, all heap blocks have a common section in the beginning bytes,
  * called a block header, in which reside the list item structure and an unsigned number
  * that stores the total size of the memory block (including the header itself). The
  * memory after the block header, is simply left empty. When the block is given to the
- * application, a pointer to the empty portion of the it will be returned (the famous
- * void* return value of malloc), and the applicaiton can make as many modifications
- * on the portion as it wants, so long as it doesn't make the pointer go beyound the
- * heap block or go into the header section, damaging this or other  blocks. From the
- * kernel's point of view, operations on the blocks, simply become
- * operations on the block headers.
+ * application, a pointer to the empty portion of the it will be returned (like the
+ * void* return value of malloc), and the application can make as many modifications
+ * on the portion as it wants, so long as it doesn't make the pointer go beyond the
+ * heap block or go into the header section, damaging the current or other blocks. From
+ * the kernel's point of view, operations on the blocks, simply become operations on the
+ * block headers.
  *
  * $$--MERGING ADJACENT BLOCKS
  *
  * When the operating system starts, a chunk of memory will be added to the heap as an
- * initial block. During normal operation, the block will be splitted many times. At a
- * certain time, some portion splitted will be returned, while some are still used by
- * the application. As time goes by, more and more portions get splitted, and more
+ * initial block. During normal operation, the block will be split many times. At a
+ * certain time, some split portion will be returned, while some are still used by
+ * the application. As time goes by, more and more portions get split, and more
  * memory blocks will be created. Because the header portion of the blocks cannot be
  * used by the application, as more blocks get created, more block headers get created,
- * the avaliable memory will shrink. In the end, a large amount of small memory fragments
+ * the available memory will shrink. In the end, a large amount of small memory fragments
  * will be all over the heap and the system will less likely to be able to accept further
  * allocation requests from the application. However, if we can merge the adjacent blocks,
  * eliminating the unnecessary headers, the fragmentation will be reduced and the system
@@ -113,22 +113,22 @@
  *
  * $$--ALIGNMENT
  *
- * Some platforms will require some data types to be aligned to certain address bounderies.
- * For example, on ARM Cortex-M, under some conditions, the address of a uint32_t should
- * be aligned to 4-byte bounderies (its address can only be a multiple of 4). If the
- * application calls osMemoryAllocate to get a block of memory for an uint32_t* array, and
+ * Some platforms will require some data types to be aligned to certain address boundaries.
+ * For example, on ARM Cortex-M, under some conditions, the address of a uint16_t should
+ * be aligned to 4-byte boundaries (its address can only be a multiple of 4). If the
+ * application calls osMemoryAllocate to get a block of memory for an uint16_t* array, and
  * the address returned by the system is not a multiple of 4, the processor will not be
  * happy about it. As a result, the system will assume maximum memory alignment
  * requirements. For example, if the processor requires uint8_t to be aligned to a 1-byte
- * boundary (always aligned), and uint32_t to be aligned to a 4-byte boundary, the system
- * will always return an address of a multiple of 4 when calling osMemoryAllocate. In
- * order to do this, some tricks need to be done to the memory blocks. Assuming the processor
- * is 4 byte aligned, if we make the size of the block header a multiple of 4, the pointer
- * returned to the application will always be a mutiple of 4, if the memory block start
- * address is also aligned to a 4 byte boundary. If the initial memory block is aligned,
- * in order for all memory block start addresses to be aligned, the size of any memory
- * blocks will also need to be a multiple of 4. In summary, the following requirements
- * must be met:
+ * boundary (always aligned), and uint16_t and uint32_t to be aligned to a 4-byte boundary,
+ * the operating system will always return an address of a multiple of 4 when calling
+ * osMemoryAllocate. In order to do this, some tricks need to be done to the memory blocks.
+ * Assuming the processor is 4 byte aligned, if we make the size of the block header a
+ * multiple of 4, the pointer returned to the application will always be a multiple of 4,
+ * as long as the memory block start address is also aligned to a 4 byte boundary. If the
+ * initial memory block is aligned, in order for all memory block start addresses to be
+ * aligned, the size of any memory blocks will also need to be a multiple of 4. In summary,
+ * the following requirements must be met:
  * 		start address of initial memory block 		IS A MULTIPLE OF 4
  * 		size of block header						IS A MULTIPLE OF 4
  * 		size of any whole block						IS A MULTIPLE OF 4
@@ -144,16 +144,16 @@
  *
  * When the application requests a block of memory, the kernel will traverse the heap
  * to find a block that has a size large enough and decides if the block should be
- * splitted. If the kernel starts at the begining of the heap, and uses the first
+ * split. If the kernel starts at the beginning of the heap, and uses the first
  * block it finds that fits the application's need, the method is called a FIRST FIT;
- * if the kernel starts at the block after the last block that was splitted, and uses
- * the first block that it found legit, the method is called a NEXT FIT; if the
+ * if the kernel starts at the block after the last block that was split, and uses
+ * the first block that is large enough, the method is called a NEXT FIT; if the
  * kernel traverses the whole heap and only use the smallest block that is large
  * enough for the application, this is called a BEST FIT.
  *
- * FIRST FIT -- Fast, but causes a large amout of very small pieces of memory to
+ * FIRST FIT -- Fast, but causes a large amount of very small pieces of memory to
  * build up at start of the heap. Degrades allocation speed over time because the
- * kernel have to go through a lot of small blocks at the begining to find a legit
+ * kernel have to go through a lot of small blocks at the beginning to find a
  * large one. (TECHNICAL TERM: EXCESSIVE FRAGMENTATION AT START OF HEAP)
  *
  * NEXT FIT -- Fast, causes small pieces of memory blocks to scatter all over the heap;
@@ -180,17 +180,17 @@
  * of items, the memory of a list does not have to be continuous in space and time like
  * an array does, and any item can be added or removed at any time very quickly. As a result,
  * this kernel supports ideally an unlimited number of threads. The priority is managed
- * by prioritized lists, which puts the item with the smallest numbers at the begining,
+ * by prioritized lists, which puts the item with the smallest numbers at the beginning,
  * and items with equal numbers are simply put next to each other. The scheduler will
- * assume the items at the begining of the list to have the highest priority, and thus the
+ * assume the items at the beginning of the list to have the highest priority, and thus the
  * smaller the number, the higher the priority.
  *
- * Lists, however, have some disvantages. Besides consuming more memory for each item,
- * lists are undeterministic meaning that the time(machine cycles) it takes for some list
+ * Lists, however, have some disadvantages. Besides consuming more memory for each item,
+ * lists are indeterministic meaning that the time(machine cycles) it takes for some list
  * operations to complete depend totally on the runtime situation (i.e. number of items in
  * the list), which is usually the case for prioritized insert functions, where the
  * processor needs to go through a loop structure to find where to place the new item,
- * making this unfit for hard real-time situations.
+ * making this unfit for hard real-time applications.
  *
  * $$--SCHEDULING SCHEMES
  *
@@ -200,7 +200,7 @@
  * operating system. If multiple threads has the highest priority, the scheduler will
  * run them all individually for a period of time, because a reschedule request is generated
  * every time the tick timer times out, until it reaches a list item with a value larger
- * than the highest priority number, in which case it will start at the begining of the list
+ * than the highest priority number, in which case it will start at the beginning of the list
  * again. In short, this scheduler integrates both preemptive and round-robin scheduling.
  *
  * $$--HOW TIMED BLOCKING IS ACHIEVED
@@ -210,7 +210,7 @@
  * the current system time, and the timer list item will be set and inserted into the
  * system time out list thread_timed. Upon every tick, the scheduler will check if any
  * threads in the timeout list has expired, and if so, the scheduler list item of the
- * thread will be remved from its list, if any, and inserted into the ready list,
+ * thread will be removed from its list, if any, and inserted into the ready list,
  * marking the readiness of the thread. A reschedule request will be generated if the
  * thread has a higher priority than the existing highest priority thread. Additionally,
  * the expired timer list item will also be removed from threads_timed.
@@ -230,11 +230,11 @@
  * $$--DEVASTATING EFFECTS OF LEAVING A GLOBAL RESOURCE HALF-MODIFIED
  *
  * For a data operation to be successful, it first needs to be done right, and secondly,
- * it has to be completed. This would seem obvious but on multi-threaded enviroment,
+ * it has to be completed. This would seem obvious but on multi-threaded environment,
  * for multi-step operations (operations that take multiple instructions to complete or
  * operations that use 1 single instruction, but the instruction can be interrupted),
  * it's very easy for a resource to be half-modified, because another thread or an ISR
- * can preempt in the middle of an operation, and trys to read the incomplete resource
+ * can preempt in the middle of an operation, and tries to read the incomplete resource
  * or tries to perform other operations on it! Since global resources can be accessed
  * by all threads, and shared resources can be accessed by multiple designated threads,
  * multi-step operations on these resources have to be protected in a critical section,
@@ -247,7 +247,7 @@
  * user. But in the kernel itself, these software mutual exclusions are not available.
  *
  * The best way to implement mutual exclusion is to assign a lock for each set of
- * resources. All operations on the lock are atomic(undividable), thus cannot be
+ * resources. All operations on the lock are atomic(indivisible), thus cannot be
  * interrupted. But in order to be locked, the lock has to be in an unlocked state,
  * otherwise the lock operation will halt until the lock is unlocked. Before
  * accessing the resource, every thread has to lock the lock to gain access rights
@@ -259,7 +259,7 @@
  * in low effective CPU utilization. Other similar methods also exist, depending on the
  * architecture.
  *
- * The simpliest and the most widely available way to ensure mutual exclusion is to
+ * The simplest and the most widely available way to ensure mutual exclusion is to
  * disable interrupt, thus disabling all ISRs and the scheduler (which works by
  * interrupting the processor), so that all processes and ISRs that MIGHT access this
  * resource cannot execute until this operation is done, no matter if they actually
@@ -289,7 +289,7 @@
  *
  * Declaring a field volatile will inhibit any compiler optimizations that assume
  * access by a single thread. For example, when writing to a variable multiple times
- * with the same value, the compiler will sometimes optimize out all unncessary
+ * with the same value, the compiler will sometimes optimize out all unnecessary
  * consecutive writes, leaving only 1 write instruction, because it assumes that the
  * variable does not change between writes. When declared volatile, the compiler
  * will generate each and every write instruction.
@@ -416,7 +416,7 @@ struct notPrioritizedListItem
 	void *volatile container;
 };
 
-/* items are ordered in this list, with smallest values at the begining */
+/* items are ordered in this list, with smallest values at the beginning */
 struct prioritizedList
 {
 	PrioritizedListItem_t *volatile first;
@@ -461,7 +461,7 @@ struct thread
 	 * When the thread is executing, the processor stack pointer register will
 	 * point to the exact stack top location instead.
 	 * The PSP should be easily accessible to the context switcher which is
-	 * writtern in assembly, so it is placed at the begining here.*/
+	 * written in assembly, so it is placed at the beginning here.*/
 	osByte_t *volatile PSP;
 
 	/* the scheduler list item, as name indicates, will be put into scheduler's lists.
@@ -479,7 +479,7 @@ struct thread
 
 	/* pointer to the stack memory. the PSP should be pointing into the stack memory.
 	 * Otherwise the stack would overflow, damaging important data, and the kernel would
-	 * go mayhem. This usually occures when using stack-consuming functions like
+	 * go mayhem. This usually occurs when using stack-consuming functions like
 	 * printf, also don't define a very large array in functions. Currently the kernel
 	 * doesn't check stack pointers, even if it does, it can't make sure overflows don't
 	 * happen. The best way is to protect the processor memory map with a memory
@@ -552,7 +552,7 @@ struct recursiveMutex
 	/* owner of the mutex */
 	Thread_t* volatile owner;
 
-	/* nesting coutner */
+	/* nesting counter */
 	volatile osCounter_t counter;
 };
 
@@ -623,7 +623,7 @@ struct queue
 	 * memory */
 	volatile osCounter_t read;
 
-	/* offset of the next free byte to write, should revert back to begining of
+	/* offset of the next free byte to write, should revert back to beginning of
 	 * queue memory */
 	volatile osCounter_t write;
 };
@@ -650,7 +650,7 @@ struct queueReadWait
 };
 
 /* wait struct for threads intended to write data, but there's currently
- * nore enough space in the queue to write to */
+ * not enough space in the queue to write to */
 struct queueWriteWait
 {
 	/* wait result, set to false by the thread intended to write data to the queue,

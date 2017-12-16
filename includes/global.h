@@ -25,7 +25,7 @@ extern PrioritizedList_t 			threads_ready;				/* Threads in ready state */
 
 extern Thread_t 					idleThread;					/* Idle thread TCB */
 extern Thread_t *volatile 			currentThread;				/* thread to which current context should be saved */
-extern Thread_t *volatile 			nextThread;					/* thread from which new context shoule be loaded, if context switch is to take place */
+extern Thread_t *volatile 			nextThread;					/* thread from which new context should be loaded, if context switch is to take place */
 
 extern volatile osCounter_t			systemTime;					/* Incremented on every tick */
 extern volatile osCounter_t 		criticalNesting;			/* Temporary value, saved on every thread's context */
