@@ -88,7 +88,7 @@ void
 thread_blockCurrent( PrioritizedList_t* list, osCounter_t timeout, void* wait )
 {
 	/* define the critical nesting counter on the thread's stack */
-	osCounter_t volatile criticalNestingSave;
+	osCounter_t criticalNestingSave;
 
 	/* this function has to be called in a critical section because it accesses global resources. */
 	OS_ASSERT( criticalNesting );

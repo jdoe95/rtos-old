@@ -96,6 +96,9 @@ OS_TICK_HANDLER_NAME( void )
 		 * call the scheduler function to check if it should be run next.  */
 		nextThread = (Thread_t*)( nextThread->schedulerListItem.next->container );
 
+		/* next thread have to be pointing into the ready list */
+		OS_ASSERT( nextThread->schedulerListItem.list == (void*)(&threads_ready) );
+
 		thread_setNew();
 
 		if( currentThread != nextThread )

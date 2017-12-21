@@ -202,7 +202,7 @@ memory_blockFindInHeap( void* blockStartAddress )
 }
 
 /* split a block so that it can be 'size' and return the new block.
- * If the block to be splitted is in a memory list or the heap,
+ * If the block to be split is in a memory list or the heap,
  * the new block will not be inserted into the memory list or heap.
  */
 MemoryBlock_t*
@@ -246,19 +246,19 @@ memory_getBlockFromHeap( osCounter_t size )
 
 			if( size <= i->size )
 			{
-				/* the remaining space of the block if the block is to be splitted */
+				/* the remaining space of the block if the block is to be split */
 				remainingSpace = i->size - size;
 
 				/* split if remaining space greater than minimum block size */
 				if( remainingSpace >= memory_roundUpBlockSize( sizeof(MemoryBlock_t) ) )
 				{
-					/* split the block and get the newly splitted block */
+					/* split the block and get the newly split block */
 					block = memory_blockSplit( i, size );
 
 					/* insert the new block into the heap */
 					memory_blockInsertToHeap( block );
 
-					/* set current pointer to the newly splitted block (next fit algorithm) */
+					/* set current pointer to the newly split block (next fit algorithm) */
 					heap.current = block;
 				}
 
@@ -369,10 +369,10 @@ osMemoryReallocate( void*p, osCounter_t newSize )
 				/* found a consecutive free block */
 				if( tempBlock->size >= tempSize )
 				{
-					/* check if block in heap is splittable */
+					/* check if block in heap can be split */
 					if( tempBlock->size - tempSize >= memory_roundUpBlockSize(sizeof(MemoryBlock_t)) )
 					{
-						/* split the block and insert the newly splitted block to the heap */
+						/* split the block and insert the newly split block to the heap */
 						memory_blockInsertToHeap(memory_blockSplit( tempBlock, tempSize ));
 
 						/* append by simply updating the size field */
@@ -428,7 +428,7 @@ osMemoryReallocate( void*p, osCounter_t newSize )
 		/* calculate number of redundant bytes */
 		tempSize = currentSize - targetSize;
 
-		/* check if block is splittable */
+		/* check if block can be split */
 		if( tempSize >= memory_roundUpBlockSize(sizeof(MemoryBlock_t)) )
 		{
 			osThreadEnterCritical();
