@@ -1,14 +1,9 @@
-/*************************************************************************
- * RTOS INTERNAL FUNCTION DECLARATION
- *
- * AUTHOR BUYI YU
- *  1917804074@qq.com
- *
- * (C) 2017
- *
- * 	You should have received an open source user license.
- * 	ABOUT USAGE, MODIFICATION, COPYING, OR DISTRIBUTION, SEE LICENSE.
- *************************************************************************/
+/** *********************************************************************
+ * @file
+ * @brief RTOS Internal functions
+ * @author John Doe (jdoe35087@gmail.com)
+ * @details This file contains the declaration of RTOS internal functions.
+ ***********************************************************************/
 #ifndef HD8FEBD31_8511_4019_860C_C3532E53EBF0
 #define HD8FEBD31_8511_4019_860C_C3532E53EBF0
 
@@ -16,93 +11,147 @@
 #include "global.h"
 #include "functions_external.h"
 
-/* marks a non-reentrant function (a function that accesses global resources) */
+/**
+ * @brief Marks a function as thread-unsafe (because it accesses global variables)
+ * @details NREENT functions must be called inside critical sections.
+ */
 #define NREENT
 
-/**************************************************************************
- * LIST
- **************************************************************************/
-void listItemCookie_insertBefore	( ListItemCookie_t* cookie, ListItemCookie_t* position );
-void listItemCookie_insertAfter		( ListItemCookie_t* cookie, ListItemCookie_t* position );
-void listItemCookie_remove			( ListItemCookie_t* cookie );
+/** ************************************************************************************************
+ * @defgroup os_internal_list List
+ */
 
-INLINE void notPrioritizedList_init	( NotPrioritizedList_t* list );
-INLINE void prioritizedList_init	( PrioritizedList_t* list );
+/**
+ * @ingroup os_internal_list
+ * @{
+ */
+void listItemCookie_insertBefore	( void* cookie, void* position );
+void listItemCookie_insertAfter		( void* cookie, void* position );
+void listItemCookie_remove			( void* cookie );
+
+OS_INLINE void notPrioritizedList_init	( NotPrioritizedList_t* list );
+OS_INLINE void prioritizedList_init		( PrioritizedList_t* list );
 
 void notPrioritizedList_itemInit	( NotPrioritizedListItem_t* item, void *container );
 void prioritizedList_itemInit		( PrioritizedListItem_t* item, void *container, osCounter_t value );
 
-INLINE void notPrioritizedList_insertBeforeByCookie	( NotPrioritizedListItem_t* item, NotPrioritizedListItem_t* position );
-INLINE void notPrioritizedList_insertAfterByCookie	( NotPrioritizedListItem_t* item, NotPrioritizedListItem_t* position );
-INLINE void notPrioritizedList_removeByCookie		( NotPrioritizedListItem_t* item );
-INLINE void prioritizedList_insertBeforeByCookie	( PrioritizedListItem_t* item, PrioritizedListItem_t* position );
-INLINE void prioritizedList_insertAfterByCookie		( PrioritizedListItem_t* item, PrioritizedListItem_t* position );
-INLINE void prioritizedList_removeByCookie			( PrioritizedListItem_t* item );
-
 void notPrioritizedList_insert		( NotPrioritizedListItem_t* item, NotPrioritizedList_t* list );
-void notPrioritizedList_remove		( NotPrioritizedListItem_t* item );
 void prioritizedList_insert			( PrioritizedListItem_t* item, PrioritizedList_t* list );
-void prioritizedList_remove			( PrioritizedListItem_t* item );
 
-NotPrioritizedListItem_t* notPrioritizedList_findContainer( const void* container, NotPrioritizedList_t* list );
-PrioritizedListItem_t* prioritizedList_findContainer( const void* container, PrioritizedList_t* list );
+void list_remove( void* item );
+/** ************************************************************************************************
+ * @}
+ */
 
 #include "inline_functions/list.h"
 
-/**************************************************************************
- * HEAP
- **************************************************************************/
-void memory_blockInit( MemoryBlock_t* block, osCounter_t size );
-INLINE void memory_listInit( MemoryList_t* list );
-INLINE void memory_heapInit( void );
+/** ************************************************************************************************
+ * @defgroup os_internal_heap Heap
+ */
 
-INLINE void memory_blockInsertBeforeByCookie	( MemoryBlock_t* block, MemoryBlock_t* position );
-INLINE void memory_blockInsertAfterByCookie	( MemoryBlock_t* block, MemoryBlock_t* position );
-INLINE void memory_blockRemoveByCookie			( MemoryBlock_t* block );
+/**
+ * @ingroup os_internal_heap
+ * @{
+ */
 
-NREENT void memory_blockInsertToMemoryList		( MemoryBlock_t* block, MemoryList_t* list );
-NREENT void memory_blockRemoveFromMemoryList	( MemoryBlock_t* block, MemoryList_t* list );
+/**
+ * @brief Rounds up the memory size to the smallest aligned value
+ * @param size the size in bytes to round up
+ * @return size rounded up to the nearest aligned value
+ */
+#define HEAP_ROUND_UP_SIZE(size) \
+	( ((size) % OS_MEMORY_ALIGNMENT) ? \
+		((size) + OS_MEMORY_ALIGNMENT - (size) % OS_MEMORY_ALIGNMENT) : (size) )
 
-NREENT void memory_blockInsertToHeap		( MemoryBlock_t* block );
-NREENT void memory_blockRemoveFromHeap		( MemoryBlock_t* block );
+/**
+ * @brief Checks if the memory address or the memory block size is aligned
+ * @param value a memory address or the size of a memory block
+ * @retval true if the memory address or the memory block size is aligned
+ * @retval false if the memory address or the memory block size is not aligned
+ */
+#define HEAP_IS_ALIGNED(value) \
+	( ((osCounter_t)value) % OS_MEMORY_ALIGNMENT == 0 )
 
-MemoryBlock_t* memory_blockSplit					( MemoryBlock_t* block, osCounter_t size );
+/**
+ * @brief Returns the pointer to the internal memory in the memory block
+ * @param block pointer to the memory block whose internal memory is to be returned
+ * @retval the pointer to the internal memory of the memory block
+ */
+#define HEAP_POINTER_FROM_BLOCK(block) \
+	( (osByte_t*)(block) + HEAP_ROUND_UP_SIZE(sizeof(MemoryBlock_t)) )
+
+/**
+ * @brief Calculates the pointer of the memory block from the pointer to
+ * the internal memory
+ * @param pointer the pointer to the internal memory of a memory block
+ * @return the pointer to the memory block
+ */
+#define HEAP_BLOCK_FROM_POINTER(pointer) \
+	( (MemoryBlock_t*) ((osByte_t*)pointer - HEAP_ROUND_UP_SIZE(sizeof(MemoryBlock_t))) )
+
+OS_INLINE void memory_listInit( MemoryList_t* list );
+OS_INLINE void memory_heapInit( void );
+
+MemoryBlock_t* memory_blockCreate( void* memory, osCounter_t size );
+
+void memory_blockInsertToMemoryList		( MemoryBlock_t* block, MemoryList_t* list );
+void memory_blockRemoveFromMemoryList	( MemoryBlock_t* block, MemoryList_t* list );
+
+NREENT void memory_blockInsertToHeap	( MemoryBlock_t* block );
+NREENT void memory_blockRemoveFromHeap	( MemoryBlock_t* block );
+
+MemoryBlock_t* memory_blockSplit				( MemoryBlock_t* block, osCounter_t size );
 NREENT MemoryBlock_t* memory_blockMergeInHeap	( MemoryBlock_t* block );
-NREENT MemoryBlock_t* memory_blockFindInHeap		( void* blockStartAddress );
+NREENT MemoryBlock_t* memory_blockFindInHeap	( void* blockStartAddress );
 
-NREENT MemoryBlock_t* memory_getBlockFromHeap( osCounter_t size );
-NREENT INLINE void memory_returnBlockToHeap( MemoryBlock_t* block );
+NREENT MemoryBlock_t* memory_getBlockFromHeap	( osCounter_t size );
+NREENT void memory_returnBlockToHeap			( MemoryBlock_t* block );
 
-void* memory_allocateFromHeap( osCounter_t size, MemoryList_t* destination );
-void memory_returnToHeap( void* p, MemoryList_t* source );
+NREENT void* memory_allocateFromHeap	( osCounter_t size, MemoryList_t* destination );
+NREENT void memory_returnToHeap			( void* p, MemoryList_t* source );
 
-INLINE void* memory_getPointerFromBlock( MemoryBlock_t* block );
-INLINE MemoryBlock_t* memory_getBlockFromPointer( void *p );
-
-INLINE osCounter_t memory_roundUpBlockSize( osCounter_t size );
+/** ************************************************************************************************
+ * @}
+ */
 
 #include "inline_functions/heap.h"
 
-/**************************************************************************
- * THREAD
- **************************************************************************/
+/** ************************************************************************************************
+ * @defgroup os_internal_thread Thread
+ */
+
+/**
+ * @ingroup os_internal_thread
+ * @{
+ */
 void threadReturnHook( void );
 void thread_init( Thread_t* thread );
-INLINE NREENT void thread_setNew( void );
+OS_INLINE NREENT void thread_setNew( void );
 NREENT void thread_makeReady( Thread_t* thread );
 NREENT void thread_makeAllReady( PrioritizedList_t* list );
-void thread_blockCurrent( PrioritizedList_t* list, osCounter_t timeout, void* wait );
+NREENT void thread_blockCurrent( PrioritizedList_t* list, osCounter_t timeout, void* wait );
 
+/** ************************************************************************************************
+ * @}
+ */
 #include "inline_functions/thread.h"
 
-/**************************************************************************
- * QUEUE
- **************************************************************************/
-NREENT void queue_solveEquation( osHandle_t queue );
-NREENT void queue_read( Queue_t* queue, void* data, osCounter_t size );
-NREENT void queue_readBehind( Queue_t* queue, void* data, osCounter_t size );
-NREENT void queue_write( Queue_t* queue, const void* data, osCounter_t size );
-NREENT void queue_writeAhead( Queue_t* queue, const void* data, osCounter_t size );
+/** ************************************************************************************************
+ * @defgroup os_internal_queue Queue
+ */
+
+/**
+ * @ingroup os_internal_queue
+ * @{
+ */
+void queue_solveEquation( Queue_t* queue );
+void queue_read( Queue_t* queue, void* data, osCounter_t size );
+void queue_write( Queue_t* queue, const void* data, osCounter_t size );
+osCounter_t queue_getUsedSize( Queue_t* queue );
+osCounter_t queue_getFreeSize( Queue_t* queue );
+/** ************************************************************************************************
+ * @}
+ */
 
 /**************************************************************************
  * TIMER
@@ -113,29 +162,27 @@ NREENT TimerPriorityBlock_t* timer_createPriority( osCounter_t priority );
 NREENT TimerPriorityBlock_t* timer_searchPriority( osCounter_t priority );
 void timerTask( TimerPriorityBlock_t* volatile priorityBlock );
 
-/**************************************************************************
- * PORT
- **************************************************************************/
+/**
+ * @defgroup portable_os_functions Portable Operating System Functions
+ * @ingroup portable_layer
+ * @brief Portable operating system functions
+ * @details This module contains functions that are portable across different
+ * architectures. These functions should be implemented in the portable layer.
+ */
+
+/** ***********************************************************************
+ * @ingroup portable_os_functions
+ * @{
+ */
 void port_enableInterrupts( void );
 void port_disableInterrupts( void );
 
-/* Code that the idle thread run. Does nothing. */
-void port_idle( void );
-
-/* enables the heart tick timer and loads the first thread */
+OS_NORETURN void port_idle( void );
 void port_startKernel( void );
-
-/* saves current thread and loads a new thread */
 void port_yield( void );
 
-/* adds memory regions to the heap during os initialization */
-void port_heapInit( void );
-
-/* generates a fake context for newly created threads. */
-osByte_t* port_makeFakeContext(
-		osByte_t* stack,
-		osCounter_t stackSize,
-		osCode_t code,
-		const void* argument );
+osByte_t* port_makeFakeContext(	osByte_t* stack, osCounter_t stackSize,
+		osCode_t code, const void* argument );
+/** @} ********************************************************************/
 
 #endif /* HD8FEBD31_8511_4019_860C_C3532E53EBF0 */

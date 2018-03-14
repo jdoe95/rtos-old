@@ -1,46 +1,76 @@
-/*******************************************************************
- * LIST FUNCTIONS
- *
- * AUTHOR BUYI YU
- *  1917804074@qq.com
- *
- * (C) 2017
- *
- * 	You should have received an open source user license.
- * 	ABOUT USAGE, MODIFICATION, COPYING, OR DISTRIBUTION, SEE LICENSE.
- *******************************************************************/
+/** *********************************************************************
+ * @file
+ * @brief List related functions
+ * @author John Doe (jdoe35087@gmail.com)
+ * @details This file contains the implementation of list related functions.
+ ***********************************************************************/
 #include "../includes/config.h"
 #include "../includes/functions.h"
 
-/* list item cookie *************************************************************/
+/**
+ * @brief Inserts an list item before the specified position
+ * @param cookie pointer to the item to be inserted
+ * @param position pointer to an item in the list that specifies the position
+ * @details This function is called by higher level list functions. It only
+ * updates the @ref listItemCookie.prev and @ref listItemCookie.next
+ * fields in the list item, and should not be called directly.
+ */
 void
-listItemCookie_insertBefore( ListItemCookie_t* cookie, ListItemCookie_t* position )
+listItemCookie_insertBefore( void* cookie, void* position )
 {
-	cookie->prev = position->prev;
-	cookie->next = position;
-	position->prev->next = cookie;
-	position->prev = cookie;
+	ListItemCookie_t *pCookie = (ListItemCookie_t*)cookie,
+			*pPosition = (ListItemCookie_t*)position;
+
+	pCookie->prev = pPosition->prev;
+	pCookie->next = pPosition;
+	pPosition->prev->next = pCookie;
+	pPosition->prev = pCookie;
 }
 
+/**
+ * @brief Inserts an list item after the specified position
+ * @param cookie pointer to the item to be inserted
+ * @param position pointer to an item in the list that specifies the position
+ * @details This function is called by higher level list functions. It only
+ * updates the @ref listItemCookie.prev and @ref listItemCookie.next
+ * fields in the list item, and should not be called directly.
+ */
 void
-listItemCookie_insertAfter( ListItemCookie_t* cookie, ListItemCookie_t* position )
+listItemCookie_insertAfter( void* cookie, void* position )
 {
-	cookie->next = position->next;
-	cookie->prev = position;
-	position->next->prev = cookie;
-	position->next = cookie;
+	ListItemCookie_t *pCookie = (ListItemCookie_t*)cookie,
+			*pPosition = (ListItemCookie_t*)position;
+
+	pCookie->next = pPosition->next;
+	pCookie->prev = pPosition;
+	pPosition->next->prev = pCookie;
+	pPosition->next = pCookie;
 }
 
+/**
+ * @brief Removes an list item from the list
+ * @param cookie pointer to the item to be removed
+ * @details This function is called by higher level list functions. It only
+ * updates the @ref listItemCookie.prev and @ref listItemCookie.next
+ * fields in the list item, and should not be called directly.
+ */
 void
-listItemCookie_remove( ListItemCookie_t* cookie )
+listItemCookie_remove( void* cookie )
 {
-	cookie->prev->next = cookie->next;
-	cookie->next->prev = cookie->prev;
-	cookie->next = cookie;
-	cookie->prev = cookie;
+	ListItemCookie_t *pCookie = (ListItemCookie_t*)cookie;
+
+	pCookie->prev->next = pCookie->next;
+	pCookie->next->prev = pCookie->prev;
+	pCookie->next = cookie;
+	pCookie->prev = cookie;
 }
 
-/* not prioritized list ***********************************************************/
+/**
+ * @brief Initializes a not prioritized list item
+ * @param item pointer to the item to be initialized
+ * @param container pointer to the structure that holds the list item
+ * @details This function initializes the fields in @ref notPrioritizedListItem.
+ */
 void
 notPrioritizedList_itemInit( NotPrioritizedListItem_t* item, void *container )
 {
@@ -50,6 +80,12 @@ notPrioritizedList_itemInit( NotPrioritizedListItem_t* item, void *container )
 	item->list = NULL;
 }
 
+/**
+ * @brief Inserts a not prioritized list item to a not prioritized list
+ * @param item pointer to the item to be inserted to the list
+ * @param list pointer to the list
+ * @note This function will always append the item to the end of the list.
+ */
 void
 notPrioritizedList_insert( NotPrioritizedListItem_t* item, NotPrioritizedList_t* list )
 {
@@ -63,54 +99,18 @@ notPrioritizedList_insert( NotPrioritizedListItem_t* item, NotPrioritizedList_t*
 	}
 	else
 		/* insert as last item */
-		notPrioritizedList_insertBeforeByCookie( item, list->first );
+		listItemCookie_insertBefore( item, list->first );
 
 	item->list = list;
 }
 
-void
-notPrioritizedList_remove( NotPrioritizedListItem_t* item )
-{
-	OS_ASSERT( item->list != NULL );
-
-	if( item == item->list->first )
-	{
-		/* 'first' should always point into the list */
-		item->list->first = item->list->first->next;
-
-		if( item == item->list->first )
-			/* this means that this item is the only item in the list */
-			item->list->first = NULL;
-	}
-
-	notPrioritizedList_removeByCookie( item );
-	item->list = NULL;
-}
-
-NotPrioritizedListItem_t*
-notPrioritizedList_findContainer( const void* container, NotPrioritizedList_t* list )
-{
-	NotPrioritizedListItem_t* i;
-
-	if( list->first != NULL )
-	{
-		/* the list is not empty */
-
-		i = list->first;
-
-		do
-		{
-			if( i->container == container )
-				return i;
-
-			i = i->next;
-		} while( i != list->first );
-	}
-
-	return NULL;
-}
-
-/* prioritized list **********************************************************************/
+/**
+ * @brief Initializes a prioritized list item
+ * @param item pointer to the prioritized list item to be initialized
+ * @param container pointer to the structure that holds the list item
+ * @param value the value of the list item
+ * @details This function initializes the fields in @ref prioritizedListItem.
+ */
 void
 prioritizedList_itemInit( PrioritizedListItem_t* item, void *container, osCounter_t value )
 {
@@ -121,6 +121,16 @@ prioritizedList_itemInit( PrioritizedListItem_t* item, void *container, osCounte
 	item->value = value;
 }
 
+/**
+ * @brief Inserts a prioritized list item to a prioritized list
+ * @param item pointer to the item to be inserted to the list
+ * @param list pointer to the list
+ * @details The list allows multiple items to have the same value.
+ * The items with the smaller values will always be inserted to the front
+ * of the list, with the @ref prioritizedList.first pointer pointing to
+ * the item with the smallest value. For items with the same values, the
+ * they will be arranged in the order they are inserted.
+ */
 void
 prioritizedList_insert( PrioritizedListItem_t* item, PrioritizedList_t* list )
 {
@@ -137,12 +147,12 @@ prioritizedList_insert( PrioritizedListItem_t* item, PrioritizedList_t* list )
 	else if( item->value >= list->first->prev->value )
 	{
 		/* insert as last item */
-		prioritizedList_insertBeforeByCookie( item, list->first );
+		listItemCookie_insertBefore( item, list->first );
 	}
 	else if( item->value < list->first->value )
 	{
 		/* insert as first item */
-		prioritizedList_insertBeforeByCookie( item, list->first );
+		listItemCookie_insertBefore( item, list->first );
 		list->first = item;
 	}
 	else
@@ -159,15 +169,21 @@ prioritizedList_insert( PrioritizedListItem_t* item, PrioritizedList_t* list )
 
 		} while(true); /* equivalent to while(i != list->first) */
 
-		prioritizedList_insertBeforeByCookie( item, i );
+		listItemCookie_insertBefore( item, i);
 	}
 
 	item->list = list;
 }
 
+/**
+ * @brief Removes a prioritized or not prioritized list item from its list
+ * @param p pointer to the item to be removed
+ */
 void
-prioritizedList_remove( PrioritizedListItem_t* item )
+list_remove( void* p )
 {
+	NotPrioritizedListItem_t* item = (NotPrioritizedListItem_t*)p;
+
 	OS_ASSERT( item->list != NULL );
 
 	if( item == item->list->first )
@@ -175,33 +191,11 @@ prioritizedList_remove( PrioritizedListItem_t* item )
 		/* 'first' should always point into the list */
 		item->list->first = item->list->first->next;
 
-		/* this means that this item is the only item in the list */
 		if( item == item->list->first )
+			/* this means that this item is the only item in the list */
 			item->list->first = NULL;
 	}
 
-	prioritizedList_removeByCookie( item );
+	listItemCookie_remove( item );
 	item->list = NULL;
-}
-
-PrioritizedListItem_t*
-prioritizedList_findContainer( const void* container, PrioritizedList_t* list )
-{
-	PrioritizedListItem_t* i;
-
-	if( list->first != NULL )
-	{
-		/* the list is not empty */
-
-		i = list->first;
-		do
-		{
-			if( i->container == container )
-				return i;
-
-			i = i->next;
-		} while( i != list->first );
-	}
-
-	return NULL;
 }

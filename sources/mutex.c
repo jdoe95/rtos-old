@@ -1,24 +1,33 @@
-/****************************************************************
- * MUTEX FUNCITONS FILE
- *
- * AUTHOR BUYI YU
- *  1917804074@qq.com
- *
- * (C) 2017
- *
- * 	You should have received an open source user license.
- * 	ABOUT USAGE, MODIFICATION, COPYING, OR DISTRIBUTION, SEE LICENSE.
+/** **************************************************************
+ * @file
+ * @brief Mutex implementation
+ * @author John Doe (jdoe35087@gmail.com)
+ * @details This file defines the API functions for mutex and
+ * recursive mutex.
  ****************************************************************/
 #include "../includes/config.h"
 #include "../includes/types.h"
 #include "../includes/global.h"
 #include "../includes/functions.h"
 
+/**
+ * @brief Creates a mutex.
+ * @return handle to the created mutex, if mutex successfully created;
+ * 	0, if mutex creation failed.
+ * @note contexts in which this function can be used
+ * 	- Yes: an interrupt context
+ * 	- Yes: main stack context before the kernel started
+ * 	- Yes: thread contexts
+ */
 osHandle_t
 osMutexCreate( void )
 {
 	/* allocate a new mutex control block */
-	Mutex_t* mutex = memory_allocateFromHeap( sizeof(Mutex_t), &kernelMemoryList );
+	Mutex_t* mutex;
+
+	osThreadEnterCritical();
+	mutex = memory_allocateFromHeap( sizeof(Mutex_t), &kernelMemoryList );
+	osThreadExitCritical();
 
 	if( mutex == NULL )
 	{
@@ -33,6 +42,19 @@ osMutexCreate( void )
 	return (osHandle_t) mutex;
 }
 
+/**
+ * @brief Deletes a mutex.
+ * @param h handle to the mutex to be destroyed.
+ * @details This function deletes a mutex and released the resources
+ * occupied by the mutex and the control structures. The thread blocked
+ * on the mutex prior to its deletion will be readied and the block will
+ * fail. The handle will be invalid and should never be used again after
+ * calling this function.
+ * @note contexts in which this function can be used
+ * 	- Yes: an interrupt context
+ * 	- No: main stack context before the kernel started
+ * 	- Yes: thread contexts
+ */
 void
 osMutexDelete( osHandle_t h )
 {
@@ -50,13 +72,30 @@ osMutexDelete( osHandle_t h )
 			thread_setNew();
 			port_yield();
 		}
+
+		/* free the mutex control block */
+		memory_returnToHeap( mutex, & kernelMemoryList );
 	}
 	osThreadExitCritical();
-
-	/* free the mutex control block */
-	memory_returnToHeap( mutex, & kernelMemoryList );
 }
 
+/**
+ * @brief Tests if a mutex can be locked.
+ * @param h handle to the mutex to be tested.
+ * @retval true if the mutex can be locked
+ * @retval false if the mutex cannot be locked
+ * @details
+ * The mutex can be locked only when it is unlocked.
+ *
+ * If some actions are to be performed based on the result
+ * of this function, beware that another thread can modify the
+ * mutex as soon as this function returns. In order to prevent
+ * this, a critical section should be used.
+ * @note contexts in which this function can be used
+ * 	- Yes: an interrupt context
+ * 	- Yes: main stack context before the kernel started
+ * 	- Yes: thread contexts
+ */
 osBool_t
 osMutexPeekLock( osHandle_t h )
 {
@@ -75,6 +114,16 @@ osMutexPeekLock( osHandle_t h )
 	return result;
 }
 
+/**
+ * @brief Locks a mutex without blocking.
+ * @param h handle to the mutex to be locked.
+ * @retval true if the mutex is locked
+ * @retval false if the mutex cannot be locked
+ * @note contexts in which this function can be used
+ * 	- Yes: an interrupt context
+ * 	- Yes: main stack context before the kernel started
+ * 	- Yes: thread contexts
+ */
 osBool_t
 osMutexLockNonBlock( osHandle_t h )
 {
@@ -96,6 +145,21 @@ osMutexLockNonBlock( osHandle_t h )
 	return result;
 }
 
+/**
+ * @brief Locks a mutex
+ * @param h handle to the mutex to be locked
+ * @param timeout maximum time to wait for the mutex to be locked, 0 for indefinite
+ * @retval true if the mutex is locked
+ * @retval false if timeout or failed
+ * @details
+ * This function will block the current thread forever or for a specified amount
+ * of time to lock the mutex if it cannot be locked initially. This function cannot
+ * be used in an interrupt context, see @ref osMutexLockNonBlock .
+ * @note contexts in which this function can be used
+ * 	- No: an interrupt context
+ * 	- No: main stack context before the kernel started
+ * 	- Yes: thread contexts
+ */
 osBool_t
 osMutexLock( osHandle_t h, osCounter_t timeout )
 {
@@ -125,6 +189,14 @@ osMutexLock( osHandle_t h, osCounter_t timeout )
 	return result;
 }
 
+/**
+ * @brief Unlocks a mutex.
+ * @param h handle to the mutex to be unlocked
+ * @note contexts in which this function can be used
+ * 	- Yes: an interrupt context
+ * 	- No: main stack context before the kernel started
+ * 	- Yes: thread contexts
+ */
 void
 osMutexUnlock( osHandle_t h )
 {
@@ -162,10 +234,24 @@ osMutexUnlock( osHandle_t h )
 	osThreadExitCritical();
 }
 
+/**
+ * @brief Creates a recursive mutex.
+ * @return handle to the mutex, if the mutex is created successfully;
+ * 	0, if the creation failed.
+ * @note contexts in which this function can be used
+ * 	- Yes: an interrupt context
+ * 	- Yes: main stack context before the kernel started
+ * 	- Yes: thread contexts
+ */
 osHandle_t
 osRecursiveMutexCreate( void )
 {
-	RecursiveMutex_t* mutex = memory_allocateFromHeap( sizeof(RecursiveMutex_t), &kernelMemoryList );
+	RecursiveMutex_t* mutex;
+
+	osThreadEnterCritical();
+	mutex = memory_allocateFromHeap( sizeof(RecursiveMutex_t), &kernelMemoryList );
+	osThreadExitCritical();
+
 	if( mutex == NULL )
 		return 0;
 
@@ -176,6 +262,19 @@ osRecursiveMutexCreate( void )
 	return (osHandle_t) mutex;
 }
 
+/**
+ * @brief Deletes a recursive mutex.
+ * @param h handle to the recursive mutex to be deleted.
+ * @details This function deletes a recursive mutex and releases the
+ * resources occupied by the mutex and the control structures. The threads
+ * blocked on the mutex prior to its deletion will be readied and the block
+ * will fail. The handle will be invalid and should never be used again
+ * after calling this function.
+ * @note contexts in which this function can be used
+ * 	- Yes: an interrupt context
+ * 	- No: main stack context before the kernel started
+ * 	- Yes: thread contexts
+ */
 void
 osRecursiveMtuexDelete( osHandle_t h )
 {
@@ -192,12 +291,32 @@ osRecursiveMtuexDelete( osHandle_t h )
 			thread_setNew();
 			port_yield();
 		}
+
+		memory_returnToHeap( mutex, & kernelMemoryList );
 	}
 	osThreadExitCritical();
 
-	memory_returnToHeap( mutex, & kernelMemoryList );
 }
 
+/**
+ * @brief Tests if a recursive mutex can be locked.
+ * @param h handle to the recursive mutex to be tested.
+ * @retval true if the recursive mutex can be locked
+ * @retval false if the recursive mutex cannot be locked
+ * @details
+ * The recursive mutex can be locked when it is unlocked or when the calling thread
+ * owns the recursive mutex.
+ *
+ * If some actions are to be performed based on the result
+ * of this function, beware that another thread can modify the recursive
+ * mutex as soon as this function returns. In order to prevent
+ * this, a critical section should be used.
+ *
+ * @note contexts in which this function can be used
+ * 	- Yes: an interrupt context
+ * 	- Yes: main stack context before the kernel started
+ * 	- Yes: thread contexts
+ */
 osBool_t
 osRecursiveMutexPeekLock( osHandle_t h )
 {
@@ -216,6 +335,21 @@ osRecursiveMutexPeekLock( osHandle_t h )
 	return result;
 }
 
+/**
+ * @brief Tests if a recursive mutex is locked.
+ * @param h handle to the recursive mutex to be tested.
+ * @retval true if the recursive mutex is locked
+ * @retval false if the recursive mutex is not locked
+ * @details
+ * If some actions are to be performed based on the result
+ * of this function, beware that another thread can modify the
+ * recursive mutex as soon as this function returns. In order to prevent
+ * this, a critical section should be used.
+ * @note contexts in which this function can be used
+ * 	- Yes: an interrupt context
+ * 	- Yes: main stack context before the kernel started
+ * 	- Yes: thread contexts
+ */
 osBool_t
 osRecursiveMutexIsLocked( osHandle_t h )
 {
@@ -233,6 +367,16 @@ osRecursiveMutexIsLocked( osHandle_t h )
 	return result;
 }
 
+/**
+ * @brief Locks a recursive mutex without blocking.
+ * @param h handle to the recursive mutex to be locked.
+ * @retval true if the recursive mutex is locked
+ * @retval false if the recursive mutex cannot be locked
+ * @note contexts in which this function can be used
+ * 	- Yes: an interrupt context
+ * 	- Yes: main stack context before the kernel started
+ * 	- Yes: thread contexts
+ */
 osBool_t
 osRecursiveMutexLockNonBlock( osHandle_t h )
 {
@@ -255,6 +399,17 @@ osRecursiveMutexLockNonBlock( osHandle_t h )
 	return result;
 }
 
+/**
+ * @brief Locks a recursive mutex
+ * @param h handle to the recursive mutex to be locked
+ * @param timeout maximum time to wait for the recursive mutex to be locked, 0 for indefinite
+ * @retval true if the recursive mutex is locked
+ * @retval false if timeout or failed
+ * @note contexts in which this function can be used
+ * 	- No: an interrupt context
+ * 	- No: main stack context before the kernel started
+ * 	- Yes: thread contexts
+ */
 osBool_t
 osRecursiveMutexLock( osHandle_t h, osCounter_t timeout )
 {
@@ -284,6 +439,14 @@ osRecursiveMutexLock( osHandle_t h, osCounter_t timeout )
 	return result;
 }
 
+/**
+ * @brief Unlocks a recursive mutex.
+ * @param h handle to the recursive mutex to be unlocked
+ * @note contexts in which this function can be used
+ * 	- Yes: an interrupt context
+ * 	- No: main stack context before the kernel started
+ * 	- Yes: thread contexts
+ */
 void
 osRecursiveMutexUnlock( osHandle_t h )
 {

@@ -1,3 +1,11 @@
+/** ****************************************************
+ * @file
+ * @brief Timer implementation
+ * @author John Doe (jdoe35087@gmail.com)
+ * @details
+ * This file contains the implementations for operating
+ * system timer functions.
+ ******************************************************/
 #include "../includes/config.h"
 #include "../includes/types.h"
 #include "../includes/global.h"
@@ -46,7 +54,7 @@ timer_createPriority( osCounter_t priority )
 	}
 
 	/* create a daemon thread */
-	daemon = osThreadCreate( priority, (osCode_t) timerTask, TIMER_THREAD_STACK_SIZE, block );
+	daemon = osThreadCreate( priority, (osCode_t) timerTask, OS_TIMER_THREAD_STACK_SIZE, block );
 
 	/* check if thread created */
 	if( daemon == 0 )
@@ -103,7 +111,11 @@ osTimerCreate( osTimerMode_t mode, osCounter_t priority, osCounter_t period, osC
 	TimerPriorityBlock_t* priorityBlock;
 
 	/* allocate a new timer control block */
-	Timer_t* timer = memory_allocateFromHeap( sizeof(Timer_t), & kernelMemoryList );
+	Timer_t* timer;
+
+	osThreadEnterCritical();
+	timer = memory_allocateFromHeap( sizeof(Timer_t), & kernelMemoryList );
+	osThreadExitCritical();
 
 	/* check allocation */
 	if( timer == NULL )
@@ -130,7 +142,10 @@ osTimerCreate( osTimerMode_t mode, osCounter_t priority, osCounter_t period, osC
 	if( priorityBlock == NULL )
 	{
 		/* failed to create priority, free the timer control block */
+		osThreadEnterCritical();
 		memory_returnToHeap( timer, & kernelMemoryList );
+		osThreadExitCritical();
+
 		OS_ASSERT(0);
 		return 0;
 	}
@@ -159,7 +174,7 @@ osTimerDelete( osHandle_t timer )
 
 		/* this will remove the list item from priorritized list or not prioritized list,
 		 * whichever the item was in. */
-		notPrioritizedList_remove( &p->timerListItem );
+		list_remove( &p->timerListItem );
 		memory_returnToHeap( p, & kernelMemoryList );
 
 		/* if the thread was suspended, it will not delete the timer priority block,
@@ -172,7 +187,7 @@ osTimerDelete( osHandle_t timer )
 			osThreadDelete( (osHandle_t) priorityBlock->daemon );
 
 			/* remove */
-			notPrioritizedList_remove( & priorityBlock->timerPriorityListItem );
+			list_remove( & priorityBlock->timerPriorityListItem );
 
 			/* free */
 			memory_returnToHeap( priorityBlock, & kernelMemoryList );
@@ -197,7 +212,7 @@ osTimerStart( osHandle_t timer, void* argument )
 			p->futureTime = systemTime + p->period;
 
 			/* move this timer to the active list */
-			notPrioritizedList_remove( & p->timerListItem );
+			list_remove( & p->timerListItem );
 			prioritizedList_insert( (PrioritizedListItem_t*) & p->timerListItem, & p->timerPriorityBlock->timerActiveList );
 
 			/* check if daemon thread is suspended */
@@ -223,7 +238,7 @@ osTimerStop( osHandle_t timer )
 		if( p->timerListItem.list == (void*) & p->timerPriorityBlock->timerActiveList )
 		{
 			/* remove */
-			prioritizedList_remove( (PrioritizedListItem_t*) & p->timerListItem );
+			list_remove( (PrioritizedListItem_t*) & p->timerListItem );
 
 			/* insert into inactive list */
 			notPrioritizedList_insert( & p->timerListItem, & p->timerPriorityBlock->timerInactiveList );
@@ -242,7 +257,7 @@ osTimerReset( osHandle_t timer )
 		/* if in the active list, remove, modify and reinsert */
 		if( p->timerListItem.list == (void*) & p->timerPriorityBlock->timerActiveList )
 		{
-			prioritizedList_remove( (PrioritizedListItem_t*) & p->timerListItem );
+			list_remove( (PrioritizedListItem_t*) & p->timerListItem );
 			p->futureTime = systemTime + p->period;
 			prioritizedList_insert( (PrioritizedListItem_t*) & p->timerListItem, & p->timerPriorityBlock->timerActiveList );
 		}
@@ -343,7 +358,7 @@ timerTask( TimerPriorityBlock_t* volatile priorityBlock )
 					/* remove the timer from the active list. If it's periodic,
 					 * update the future time and insert again. If it's one-shot,
 					 * insert into the inactive list */
-					prioritizedList_remove( timerListItem );
+					list_remove( timerListItem );
 
 					if( timer->mode == OSTIMERMODE_PERIODIC )
 					{
@@ -372,7 +387,7 @@ timerTask( TimerPriorityBlock_t* volatile priorityBlock )
 			else
 			{
 				/* remove the prioirty block from the system timer priority list */
-				notPrioritizedList_remove( & priorityBlock->timerPriorityListItem );
+				list_remove( & priorityBlock->timerPriorityListItem );
 
 				/* free the memory */
 				memory_returnToHeap( priorityBlock, & kernelMemoryList );

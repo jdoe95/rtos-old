@@ -1,23 +1,32 @@
-/**************************************************************************
- * SEMAPHORE FUNCTIONS FILE
- *
- * AUTHOR BUYI YU
- * 	1917804074@qq.com
- *
- * (C) 2017
- *
- * 	You should have received an open source user license.
- * 	ABOUT USAGE, MODIFICATION, COPYING, OR DISTRIBUTION, SEE LICENSE.
+/** ************************************************************************
+ * @file
+ * @brief Semaphore implementation
+ * @author John Doe (jdoe35087@gmail.com)
+ * @details This file contains the implementation of the semaphore.
  **************************************************************************/
 #include "../includes/config.h"
 #include "../includes/types.h"
 #include "../includes/global.h"
 #include "../includes/functions.h"
 
+/**
+ * @brief Creates a semaphore
+ * @param initial the initial value of the semaphore counter
+ * @return handle to the semaphore, if the semaphore is created successfully;
+ * 0, if the creation failed
+ * @note contexts in which this function can be used
+ * 	- Yes: an interrupt context
+ * 	- Yes: main stack context before the kernel started
+ * 	- Yes: thread contexts
+ */
 osHandle_t
 osSemaphoreCreate( osCounter_t initial )
 {
-	Semaphore_t* semaphore = memory_allocateFromHeap( sizeof(Semaphore_t), &kernelMemoryList );
+	Semaphore_t* semaphore;
+
+	osThreadEnterCritical();
+	semaphore = memory_allocateFromHeap( sizeof(Semaphore_t), &kernelMemoryList );
+	osThreadExitCritical();
 
 	if( semaphore == NULL )
 	{
@@ -31,6 +40,18 @@ osSemaphoreCreate( osCounter_t initial )
 	return (osHandle_t) semaphore;
 }
 
+/**
+ * @brief Deletes a semaphore
+ * @param h handle to the semaphore to be deleted
+ * @details This function deletes a semaphore and releases the resources occupied
+ * by the semaphore and the control structures. The threads blocked on the semaphore
+ * prior to its deletion will be readied and the block will fail. The handle will be
+ * invalid and should never be used again after calling this function.
+ * @note contexts in which this function can be used
+ * 	- Yes: an interrupt context
+ * 	- No: main stack context before the kernel started
+ * 	- Yes: thread contexts
+ */
 void
 osSemaphoreDelete( osHandle_t h )
 {
@@ -47,12 +68,22 @@ osSemaphoreDelete( osHandle_t h )
 			thread_setNew();
 			port_yield();
 		}
+
+		memory_returnToHeap( semaphore, & kernelMemoryList );
 	}
 	osThreadExitCritical();
-
-	memory_returnToHeap( semaphore, & kernelMemoryList );
 }
 
+/**
+ * @brief Resets the semaphore to the initial state
+ * @param h handle to the semaphore to be reset
+ * @param initial the initial value of the semaphore counter after
+ * reset
+ * @note contexts in which this function can be used
+ * 	- Yes: an interrupt context
+ * 	- No: main stack context before the kernel started
+ * 	- Yes: thread contexts
+ */
 void
 osSemaphoreReset( osHandle_t h, osCounter_t initial )
 {
@@ -71,7 +102,7 @@ osSemaphoreReset( osHandle_t h, osCounter_t initial )
 		 * first != NULL will be true until the list is empty.
 		 *
 		 * (initial--) means that will count from initial down to 1 which means
-		 * the loop will execute 'initial' times if the other operant is always true */
+		 * the loop will execute 'initial' times if the other operand is always true */
 		while( (semaphore->threads.first != NULL) && (initial--) )
 		{
 			thread = (Thread_t*) semaphore->threads.first->container;
@@ -93,6 +124,15 @@ osSemaphoreReset( osHandle_t h, osCounter_t initial )
 	osThreadExitCritical();
 }
 
+/**
+ * @brief Returns the value of the counter of the semaphore
+ * @param h handle to the semaphore
+ * @return value of the counter of the semaphore
+ * @note contexts in which this function can be used
+ * 	- Yes: an interrupt context
+ * 	- Yes: main stack context before the kernel started
+ * 	- Yes: thread contexts
+ */
 osCounter_t
 osSemaphoreGetCounter( osHandle_t h )
 {
@@ -109,6 +149,17 @@ osSemaphoreGetCounter( osHandle_t h )
 	return ret;
 }
 
+/**
+ * @brief Increments the counter of the semaphore by one
+ * @param h handle to the semaphore
+ * @details This function will increment the counter of the semaphore
+ * by one, and if threads are blocked for the semaphore, the thread with
+ * the highest priority will be readied.
+ * @note contexts in which this function can be used
+ * 	- Yes: an interrupt context
+ * 	- No: main stack context before the kernel started
+ * 	- Yes: thread contexts
+ */
 void
 osSemaphorePost( osHandle_t h )
 {
@@ -146,6 +197,20 @@ osSemaphorePost( osHandle_t h )
 	osThreadExitCritical();
 }
 
+/**
+ * @brief Tests if the counter of a semaphore can be decremented
+ * @param h handle to the semaphore to be decremented
+ * @retval true if the semaphore can be decremented
+ * @retval false if the semaphore cannot be decremented
+ * @details Beware that another thread can modify the semaphore as
+ * soon as this function returns. In order to prevent this, a critical
+ * section should be used if some actions are to be performed based
+ * on the results of this function.
+ * @note contexts in which this function can be used
+ * 	- Yes: an interrupt context
+ * 	- Yes: main stack context before the kernel started
+ * 	- Yes: thread contexts
+ */
 osBool_t
 osSemaphorePeekWait( osHandle_t h )
 {
@@ -163,6 +228,20 @@ osSemaphorePeekWait( osHandle_t h )
 	return ret;
 }
 
+/**
+ * @brief Decrements the counter of a semaphore without blocking
+ * @param h handle to the semaphore whose counter to be decremented
+ * @retval true if the counter of the semaphore is decremented
+ * @retval false if the counter of the semaphore is not decremented due to failure
+ * @details Beware that another thread can modify the semaphore as
+ * soon as this function returns. In order to prevent this, a critical section
+ * should be used if some actions are to be performed based on the results of
+ * this function.
+ * @note contexts in which this function can be used
+ * 	- Yes: an interrupt context
+ * 	- Yes: main stack context before the kernel started
+ * 	- Yes: thread contexts
+ */
 osBool_t
 osSemaphoreWaitNonBlock( osHandle_t h )
 {
@@ -183,6 +262,18 @@ osSemaphoreWaitNonBlock( osHandle_t h )
 	return result;
 }
 
+/**
+ * @brief Decrements the counter of a semaphore with blocking
+ * @param h handle to the semaphore whose counter to be decremented
+ * @param timeout the maximum time in ticks to wait for the the operation,
+ * 0 can be used if indefinite
+ * @retval true if the counter of the semaphore is decremented
+ * @retval false if the counter of the semaphore is not decremented
+ * @note contexts in which this function can be used
+ * 	- No: an interrupt context
+ * 	- No: main stack context before the kernel started
+ * 	- Yes: thread contexts
+ */
 osBool_t
 osSemaphoreWait( osHandle_t h, osCounter_t timeout )
 {

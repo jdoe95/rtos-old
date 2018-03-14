@@ -1,14 +1,9 @@
-/***********************************************************************
- * GLOBAL VARIABLES
- *
- * AUTHOR BUYI YU
- *  1917804074@qq.com
- *
- * (C) 2017
- *
- * 	You should have received an open source user license.
- * 	ABOUT USAGE, MODIFICATION, COPYING, OR DISTRIBUTION, SEE LICENSE.
- ************************************************************************/
+/** ***********************************************************************
+ * @file
+ * @brief Global Variables Definition
+ * @author John Doe (jdoe35087@gmail.com)
+ * @details This file contains the definitions of global variables.
+ *************************************************************************/
 #include "../includes/config.h"
 #include "../includes/global.h"
 #include "../includes/functions.h"

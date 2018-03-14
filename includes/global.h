@@ -1,33 +1,48 @@
-/****************************************************************************
- * RTOS GLOBAL VARIABLE DEFINITIONS
- *
- * AUTHOR BUYI YU
- *  1917804074@qq.com
- *
- * (C) 2017
- *
- *  You should have received an open source user license.
- * 	ABOUT USAGE, MODIFICATION, COPYING, OR DISTRIBUTION, SEE LICENSE.
- ***************************************************************************/
+/** ***********************************************************************
+ * @file
+ * @brief Global Variables Declaration
+ * @author John Doe (jdoe35087@gmail.com)
+ * @details This file contains the declarations of global variables.
+ *************************************************************************/
 #ifndef HA77D99B0_84F3_4AB4_A348_8723510F837E
 #define HA77D99B0_84F3_4AB4_A348_8723510F837E
 
 #include "config.h"
 #include "types.h"
 
-extern Heap_t 						heap;						/* Available dynamic memory in the system */
-extern MemoryList_t 				kernelMemoryList;			/* Memory allocated from the heap currently in use by the kernel. */
+/**
+ * @defgroup os_internal_global Global Variables
+ */
 
-extern NotPrioritizedList_t			timerPriorityList;			/* List of timer lists. The timers are grouped by their daemon. */
+/**
+ * @ingroup os_internal_global
+ * @{
+ */
+extern Heap_t 						heap;				/**< @brief The heap */
+extern MemoryList_t 				kernelMemoryList;	/**< @brief Memory allocated to the kernel. */
+extern NotPrioritizedList_t			timerPriorityList;	/**< @brief  */
 
-extern PrioritizedList_t 			threads_timed;				/* Threads in a timed-block state */
-extern PrioritizedList_t 			threads_ready;				/* Threads in ready state */
+/**
+ * @brief The system timeout list.
+ * @details Threads that do not block permanently are put into this list.
+ */
+extern PrioritizedList_t 			threads_timed;
+extern PrioritizedList_t 			threads_ready;		/**< @brief The ready list */
 
-extern Thread_t 					idleThread;					/* Idle thread TCB */
-extern Thread_t *volatile 			currentThread;				/* thread to which current context should be saved */
-extern Thread_t *volatile 			nextThread;					/* thread from which new context should be loaded, if context switch is to take place */
+extern Thread_t 					idleThread;			/**< @brief The thread control block form the idle thread */
+extern Thread_t *volatile 			currentThread;		/**< @brief Points to the current thread */
+extern Thread_t *volatile 			nextThread;			/**< @brief Points to the next thread to be scheduled */
+extern volatile osCounter_t			systemTime;			/**< @brief The system time */
 
-extern volatile osCounter_t			systemTime;					/* Incremented on every tick */
-extern volatile osCounter_t 		criticalNesting;			/* Temporary value, saved on every thread's context */
+/**
+ * @brief The critical nesting counter.
+ * @details This counter is stored per-thread and will be
+ * saved and restored upon the blocking of the threads.
+ */
+extern volatile osCounter_t 		criticalNesting;
+
+/**
+ * @}
+ */
 
 #endif /* HA77D99B0_84F3_4AB4_A348_8723510F837E */

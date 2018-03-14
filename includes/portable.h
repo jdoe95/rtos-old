@@ -1,20 +1,19 @@
-/***********************************************************************
- * EXPOSES RTOS RESOURCES TO THE PORTABLE LAYER
- *
- * AUTHOR BUYI YU
- *  1917804074@qq.com
- *
- * (C) 2017
- *
- *  You should have received an open source user license.
- * 	ABOUT USAGE, MODIFICATION, COPYING, OR DISTRIBUTION, SEE LICENSE.
- *
- * The portable layer should include this file to gain access
- * to kernel resources such as kernel internal types, functions
- * and variables. The config file is also included.
+/** *********************************************************************
+ * @file
+ * @brief Portable layer header file
+ * @author John Doe (jdoe35087@gmail.com)
+ * @details This file includes the definitions of operating system internal
+ * structures and exposes these definitions to the portable layer.
  ***********************************************************************/
 #ifndef HC5AFCBBF_C9A6_4BF6_9CCE_C60FB4AE5C1B
 #define HC5AFCBBF_C9A6_4BF6_9CCE_C60FB4AE5C1B
+
+/**
+ * @defgroup portable_layer Portable Layer
+ * @brief Portable Layer
+ * @details This layer defines the functions, types and configurations
+ * that is portable across platforms.
+ */
 
 #include "config.h"
 #include "types.h"
